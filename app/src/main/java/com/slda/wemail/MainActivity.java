@@ -54,8 +54,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView statusBar, drawerAccount, navMyMail;
     private LinearLayout listInbox, listSent, listDraft, listTrash;
     private TextView tvInboxEmpty;
-    private LinearLayout listInbox, listSent, listDraft, listTrash;
-    private TextView tvInboxEmpty;
     
     private EditText etTo, etSubject, etBody, etMailPrefix, etMailDomain;
     private EditText etImapHost, etImapUser, etImapPass, etImapPort;
