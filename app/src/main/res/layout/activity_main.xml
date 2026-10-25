@@ -486,7 +486,7 @@
                             android:layout_height="wrap_content"
                             android:orientation="vertical">
                             <CheckBox android:id="@+id/cbSound" android:layout_width="match_parent" android:layout_height="wrap_content" android:checked="true" android:text="启用 XP 音效提醒" />
-                            <EditText android:id="@+id/etMailUser" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="账号" android:inputType="textEmailAddress" />
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><EditText android:id="@+id/etMailPrefix" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:hint="邮箱名称" android:inputType="text" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@" android:gravity="center" android:padding="4dp"/><EditText android:id="@+id/etMailDomain" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:hint="邮箱域名" android:inputType="text" /></LinearLayout>
                             <EditText android:id="@+id/etPass" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="密码" android:inputType="textPassword" />
                             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="发送 SMTP" android:textColor="#1E5AA8" android:layout_marginTop="8dp"/>
                             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
@@ -570,7 +570,7 @@
         <TextView android:id="@+id/navTrash" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="🗑️   垃圾邮件" android:textColor="#222222" android:textSize="15sp" />
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingStart="20dp" android:paddingTop="12dp" android:paddingBottom="4dp" android:text="我的邮箱" android:textColor="#999999" android:textSize="11sp" />
-        <TextView android:id="@+id/navMyMail" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="📮   slda.cc.cd" android:textColor="#222222" android:textSize="15sp" />
+        <TextView android:id="@+id/navMyMail" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="📮   未设置域名" android:textColor="#222222" android:textSize="15sp" />
         <TextView android:id="@+id/navSettings" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="⚙️   服务器设置" android:textColor="#222222" android:textSize="15sp" />
         <TextView android:id="@+id/navAbout" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="ℹ️   声明 / 关于" android:textColor="#222222" android:textSize="15sp" />
 
