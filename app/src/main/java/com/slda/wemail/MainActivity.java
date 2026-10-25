@@ -5,13 +5,17 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
+
 import java.util.Properties;
-import javax.mail.*;
-import javax.mail.internet.*;
+import javax.mail.Message;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 
 public class MainActivity extends AppCompatActivity {
     private EditText etTo, etSubject, etBody;
@@ -39,35 +43,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sendEmail() {
-        ringout.start(); 
+        ringout.start();
         ivEnvelope.setVisibility(View.VISIBLE);
 
-        // 使用 View.post 确保布局已经渲染，能拿到准确的坐标
         ivOutbox.post(() -> {
-            // 获取发件箱和收件箱在屏幕上的 X 坐标
             float startX = ivOutbox.getX();
             float endX = ivInbox.getX();
-            
-            // 计算飞行距离
             float deltaX = endX - startX;
 
-            // 设置逐帧飞行动画（1.5秒，模拟旧电脑的拖影感）
             TranslateAnimation anim = new TranslateAnimation(0, deltaX, 0, 0);
             anim.setDuration(1500);
-            anim.setFillAfter(true); // 飞完之后停留在终点
+            anim.setFillAfter(true);
 
-            anim.setAnimationListener(new Animation.AnimationListener() {
+            anim.setAnimationListener(new android.view.animation.Animation.AnimationListener() {
                 @Override
-                public void onAnimationStart(Animation animation) {}
+                public void onAnimationStart(android.view.animation.Animation animation) {}
 
                 @Override
-                public void onAnimationEnd(Animation animation) {
-                    // 动画结束后，触发发信和音效结算
+                public void onAnimationEnd(android.view.animation.Animation animation) {
                     finishSendingProcess();
                 }
 
                 @Override
-                public void onAnimationRepeat(Animation animation) {}
+                public void onAnimationRepeat(android.view.animation.Animation animation) {}
             });
 
             ivEnvelope.startAnimation(anim);
@@ -75,13 +73,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void finishSendingProcess() {
-        // 获取表单数据
         String to = etTo.getText().toString();
         String sub = etSubject.getText().toString();
         String body = etBody.getText().toString();
 
-        // 如果没填收件人，直接演示失败效果
-        if(to.isEmpty()) {
+        if (to.isEmpty()) {
             showResult(false, "收件人不能为空");
             return;
         }
@@ -90,17 +86,17 @@ public class MainActivity extends AppCompatActivity {
             boolean success = false;
             String errMsg = "";
             try {
-                // ===== 🚨 明天拿到 Serv00 账号后修改这里 =====
                 Properties props = new Properties();
-                props.put("mail.smtp.host", "sX.serv00.com"); 
+                props.put("mail.smtp.host", "sX.serv00.com");
                 props.put("mail.smtp.port", "465");
                 props.put("mail.smtp.auth", "true");
                 props.put("mail.smtp.socketFactory.port", "465");
                 props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
 
-                Session session = Session.getInstance(props, new Authenticator() {
+                // 🚨 核心修复：使用全限定名 javax.mail.Authenticator 避免和 java.net 冲突
+                Session session = Session.getInstance(props, new javax.mail.Authenticator() {
                     protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication("admin@slda.cc.cd", "你的真实密码"); 
+                        return new PasswordAuthentication("admin@slda.cc.cd", "你的真实密码");
                     }
                 });
 
@@ -118,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
 
             boolean finalSuccess = success;
             String finalErrMsg = errMsg;
-            
+
             handler.post(() -> showResult(finalSuccess, finalErrMsg));
         }).start();
     }
@@ -128,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
             ringout.pause();
             ringout.seekTo(0);
         }
-        ivEnvelope.setVisibility(View.GONE); // 隐藏信件
+        ivEnvelope.setVisibility(View.GONE);
 
         if (success) {
             MediaPlayer.create(this, R.raw.tada).start();
