@@ -8,7 +8,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="w Email"
         android:supportsRtl="true"
-        android:theme="@style/Theme.WEmail">
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
