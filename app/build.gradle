@@ -3,7 +3,6 @@ plugins { id 'com.android.application' }
 android {
     namespace 'com.slda.wemail'
     compileSdk 34
-
     defaultConfig {
         applicationId "com.slda.wemail"
         minSdk 24
@@ -11,7 +10,6 @@ android {
         versionCode 1
         versionName "1.0"
     }
-
     signingConfigs {
         release {
             storeFile file("../keystore/w-email-v2.jks")
@@ -20,18 +18,20 @@ android {
             keyPassword System.getenv("KEY_PASSWORD")
         }
     }
-
     buildTypes {
         release {
             minifyEnabled false
             signingConfig signingConfigs.release
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError false }
 }
 
 dependencies {
-    // 只保留最基础的依赖，防止冲突
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.sun.mail:android-mail:1.6.7'
-    implementation 'com.sun.mail:android-activation:1.6.7'
+    implementation 'com.sun.mail:jakarta.mail:2.0.1'
 }

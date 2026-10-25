@@ -10,12 +10,12 @@ import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.Properties;
-import javax.mail.Message;
-import javax.mail.PasswordAuthentication;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
+import jakarta.mail.Message;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 
 public class MainActivity extends AppCompatActivity {
     private EditText etTo, etSubject, etBody;
@@ -93,8 +93,8 @@ public class MainActivity extends AppCompatActivity {
                 props.put("mail.smtp.socketFactory.port", "465");
                 props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
 
-                // 🚨 核心修复：使用全限定名 javax.mail.Authenticator 避免和 java.net 冲突
-                Session session = Session.getInstance(props, new javax.mail.Authenticator() {
+                // 🚨 核心修复：使用全限定名 jakarta.mail.Authenticator 避免和 java.net 冲突
+                Session session = Session.getInstance(props, new jakarta.mail.Authenticator() {
                     protected PasswordAuthentication getPasswordAuthentication() {
                         return new PasswordAuthentication("admin@slda.cc.cd", "你的真实密码");
                     }
