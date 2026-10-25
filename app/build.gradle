@@ -3,6 +3,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'com.slda.wemail'
     compileSdk 34
+
     defaultConfig {
         applicationId "com.slda.wemail"
         minSdk 24
@@ -10,6 +11,7 @@ android {
         versionCode 1
         versionName "1.0"
     }
+
     signingConfigs {
         release {
             storeFile file("../keystore/w-email-v2.jks")
@@ -18,16 +20,30 @@ android {
             keyPassword System.getenv("KEY_PASSWORD")
         }
     }
+
     buildTypes {
         release {
             minifyEnabled false
             signingConfig signingConfigs.release
         }
     }
+    
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    // 🚨 核心修复：忽略重复的打包说明文件
+    packaging {
+        resources {
+            excludes += [
+                'META-INF/NOTICE.md',
+                'META-INF/LICENSE.md',
+                'META-INF/DEPENDENCIES'
+            ]
+        }
+    }
+
     lint { abortOnError false }
 }
 
