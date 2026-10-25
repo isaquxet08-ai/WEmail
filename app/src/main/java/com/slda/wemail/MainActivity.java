@@ -33,6 +33,10 @@ import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.List;
+import java.util.ArrayList;
+import jakarta.mail.Folder;
+import jakarta.mail.Store;
 import java.util.Properties;
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
@@ -139,11 +143,11 @@ public class MainActivity extends AppCompatActivity {
         });
         findViewById(R.id.btnCloseSettings).setOnClickListener(v -> windowSettings.setVisibility(View.GONE));
 
-        findViewById(R.id.desktopInboxBox).setOnClickListener(v -> showWindow(windowInbox));
+        findViewById(R.id.desktopInboxBox).setOnClickListener(v -> { showWindow(windowInbox); fetchInboxEmails(); });
         findViewById(R.id.desktopSendBox).setOnClickListener(v -> showWindow(windowCompose));
 
         findViewById(R.id.navCompose).setOnClickListener(v -> { showWindow(windowCompose); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navInbox).setOnClickListener(v -> { showWindow(windowInbox); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navInbox).setOnClickListener(v -> { showWindow(windowInbox); fetchInboxEmails(); drawerLayout.closeDrawers(); });
         findViewById(R.id.navSent).setOnClickListener(v -> { showWindow(windowSent); drawerLayout.closeDrawers(); });
         findViewById(R.id.navDraft).setOnClickListener(v -> { showWindow(windowDraft); drawerLayout.closeDrawers(); });
         findViewById(R.id.navTrash).setOnClickListener(v -> { showWindow(windowTrash); drawerLayout.closeDrawers(); });
@@ -362,6 +366,80 @@ public class MainActivity extends AppCompatActivity {
                 container.addView(tv);
             }
         } catch (Exception ignored) {}
+    }
+
+    
+    private void fetchInboxEmails() {
+        final String imapHost = prefs.getString("imap_host", "");
+        final String imapPort = prefs.getString("imap_port", "");
+        final String imapUser = prefs.getString("imap_user", "");
+        final String imapPass = prefs.getString("imap_pass", "");
+        final boolean imapSsl = prefs.getBoolean("imap_ssl", true);
+
+        if (imapHost.isEmpty() || imapUser.isEmpty() || imapPass.isEmpty()) {
+            Toast.makeText(this, "请先在设置中填写收件服务器配置", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        tvInboxEmpty.setText("正在拉取收件箱...");
+        tvInboxEmpty.setVisibility(View.VISIBLE);
+        listInbox.removeAllViews();
+
+        new Thread(() -> {
+            List<String> mailList = new ArrayList<>();
+            String error = null;
+            try {
+                Properties props = new Properties();
+                props.setProperty("mail.store.protocol", imapSsl ? "imaps" : "imap");
+                Session session = Session.getInstance(props, null);
+                Store store = session.getStore();
+                store.connect(imapHost, Integer.parseInt(imapPort), imapUser, imapPass);
+                
+                Folder inbox = store.getFolder("INBOX");
+                inbox.open(Folder.READ_ONLY);
+                Message[] messages = inbox.getMessages();
+                
+                int start = Math.max(0, messages.length - 10);
+                for (int i = messages.length - 1; i >= start; i--) {
+                    Message msg = messages[i];
+                    String from = msg.getFrom() != null && msg.getFrom().length > 0 ? msg.getFrom()[0].toString() : "未知发件人";
+                    String subject = msg.getSubject() != null ? msg.getSubject() : "(无主题)";
+                    Date date = msg.getSentDate() != null ? msg.getSentDate() : new Date();
+                    String time = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(date);
+                    mailList.add(from + "\n" + subject + "  (" + time + ")");
+                }
+                inbox.close(false);
+                store.close();
+            } catch (Exception e) {
+                error = e.getMessage();
+            }
+
+            final String err = error;
+            final List<String> finalList = mailList;
+            runOnUiThread(() -> {
+                if (err != null) {
+                    tvInboxEmpty.setText("拉取失败：" + err);
+                    tvInboxEmpty.setVisibility(View.VISIBLE);
+                } else if (finalList.isEmpty()) {
+                    tvInboxEmpty.setText("收件箱为空");
+                    tvInboxEmpty.setVisibility(View.VISIBLE);
+                } else {
+                    tvInboxEmpty.setVisibility(View.GONE);
+                    for (String mailStr : finalList) {
+                        TextView tv = new TextView(this);
+                        tv.setText(mailStr);
+                        tv.setTextSize(13);
+                        tv.setPadding(10, 10, 10, 10);
+                        listInbox.addView(tv);
+                        
+                        View divider = new View(this);
+                        divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+                        divider.setBackgroundColor(0xFFCCCCCC);
+                        listInbox.addView(divider);
+                    }
+                }
+            });
+        }).start();
     }
 
     private void sendMail() {
