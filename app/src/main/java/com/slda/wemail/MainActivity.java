@@ -1,20 +1,32 @@
 package com.slda.wemail;
 
-import android.graphics.Color;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
-import android.widget.*;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.core.view.GravityCompat;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
-import java.util.ArrayList;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Properties;
+
+import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
 import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Session;
@@ -23,215 +35,333 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final int REQ_AVATAR = 1001;
+
+    private static final String SMTP_HOST = "mail.slda.cc.cd";
+    private static final String SMTP_PORT = "465";
+    private static final String MAIL_USER = "dmptyly@slda.cc.cd";
+
     private DrawerLayout drawerLayout;
-    private EditText etTo, etSubject, etBody;
-    private ImageView ivEnvelope, ivOutbox, ivInbox;
-    private MediaPlayer ringout;
-    private Handler handler = new Handler(Looper.getMainLooper());
+    private FrameLayout desktop;
 
-    private LinearLayout windowCompose, windowInbox;
-    private ListView listViewMails;
+    private View windowInbox, windowCompose, windowSettings;
+    private ImageView desktopInboxIcon, desktopSendIcon, topAvatar, drawerAvatar;
+    private TextView statusBar;
+    private EditText etTo, etSubject, etBody, etPass;
+    private CheckBox cbSound;
+    private Button btnSend, btnSavePass;
 
-    // 记录拖拽坐标
-    private float dX, dY;
+    private SharedPreferences prefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        prefs = getSharedPreferences("wemail", MODE_PRIVATE);
+
         drawerLayout = findViewById(R.id.drawerLayout);
+        desktop = findViewById(R.id.desktop);
+
+        windowInbox = findViewById(R.id.windowInbox);
+        windowCompose = findViewById(R.id.windowCompose);
+        windowSettings = findViewById(R.id.windowSettings);
+
+        topAvatar = findViewById(R.id.topAvatar);
+        drawerAvatar = findViewById(R.id.drawerAvatar);
+        desktopInboxIcon = findViewById(R.id.desktopInboxIcon);
+        desktopSendIcon = findViewById(R.id.desktopSendIcon);
+        statusBar = findViewById(R.id.statusBar);
+
         etTo = findViewById(R.id.etTo);
         etSubject = findViewById(R.id.etSubject);
         etBody = findViewById(R.id.etBody);
-        ivEnvelope = findViewById(R.id.ivEnvelope);
-        ivOutbox = findViewById(R.id.ivOutbox);
-        ivInbox = findViewById(R.id.ivInbox);
-        
-        windowCompose = findViewById(R.id.windowCompose);
-        windowInbox = findViewById(R.id.windowInbox);
-        listViewMails = findViewById(R.id.listViewMails);
+        etPass = findViewById(R.id.etPass);
+        cbSound = findViewById(R.id.cbSound);
+        btnSend = findViewById(R.id.btnSend);
+        btnSavePass = findViewById(R.id.btnSavePass);
 
-        LinearLayout titleBarCompose = findViewById(R.id.titleBarCompose);
-        LinearLayout titleBarInbox = findViewById(R.id.titleBarInbox);
-        TextView btnCloseCompose = findViewById(R.id.btnCloseCompose);
-        TextView btnCloseInbox = findViewById(R.id.btnCloseInbox);
+        etPass.setText(prefs.getString("mail_pass", ""));
+        cbSound.setChecked(prefs.getBoolean("sound_on", true));
 
-        Button btnSend = findViewById(R.id.btnSend);
-        Button btnNavCompose = findViewById(R.id.btnNavCompose);
-        Button btnNavInbox = findViewById(R.id.btnNavInbox);
+        String savedAvatar = prefs.getString("avatar_uri", null);
+        if (savedAvatar != null) {
+            try {
+                Uri u = Uri.parse(savedAvatar);
+                topAvatar.setImageURI(u);
+                drawerAvatar.setImageURI(u);
+            } catch (Exception ignored) {
+            }
+        }
 
-        initFakeMails();
+        findViewById(R.id.btnOpenDrawer).setOnClickListener(v ->
+                drawerLayout.openDrawer(GravityCompat.START));
 
-        ringout = MediaPlayer.create(this, R.raw.ringout);
-        ringout.setLooping(true);
+        setupDrag(R.id.titleBarInbox, windowInbox);
+        setupDrag(R.id.titleBarCompose, windowCompose);
+        setupDrag(R.id.titleBarSettings, windowSettings);
 
-        // 🚨 绑定拖拽手势 (点住标题栏就能拖着跑)
-        makeDraggable(windowCompose, titleBarCompose);
-        makeDraggable(windowInbox, titleBarInbox);
+        findViewById(R.id.btnCloseInbox).setOnClickListener(v -> windowInbox.setVisibility(View.GONE));
+        findViewById(R.id.btnCloseCompose).setOnClickListener(v -> windowCompose.setVisibility(View.GONE));
+        findViewById(R.id.btnCloseSettings).setOnClickListener(v -> windowSettings.setVisibility(View.GONE));
 
-        // 关闭窗口
-        btnCloseCompose.setOnClickListener(v -> windowCompose.setVisibility(View.GONE));
-        btnCloseInbox.setOnClickListener(v -> windowInbox.setVisibility(View.GONE));
+        findViewById(R.id.desktopInboxBox).setOnClickListener(v -> showWindow(windowInbox));
+        findViewById(R.id.desktopSendBox).setOnClickListener(v -> showWindow(windowCompose));
 
-        // 侧滑栏控制窗口显示
-        btnNavCompose.setOnClickListener(v -> {
-            windowCompose.setVisibility(View.VISIBLE);
-            windowCompose.bringToFront(); // 提到最前面
-            drawerLayout.closeDrawer(GravityCompat.START);
+        findViewById(R.id.navCompose).setOnClickListener(v -> {
+            showWindow(windowCompose);
+            drawerLayout.closeDrawers();
+        });
+        findViewById(R.id.navInbox).setOnClickListener(v -> {
+            showWindow(windowInbox);
+            drawerLayout.closeDrawers();
+        });
+        findViewById(R.id.navSent).setOnClickListener(v -> {
+            Toast.makeText(this, "已发送：暂未开放", Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawers();
+        });
+        findViewById(R.id.navDraft).setOnClickListener(v -> {
+            Toast.makeText(this, "草稿箱：暂未开放", Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawers();
+        });
+        findViewById(R.id.navTrash).setOnClickListener(v -> {
+            Toast.makeText(this, "垃圾邮件：暂未开放", Toast.LENGTH_SHORT).show();
+            drawerLayout.closeDrawers();
+        });
+        findViewById(R.id.navMyMail).setOnClickListener(v -> {
+            Toast.makeText(this, "slda.cc.cd · dmptyly@slda.cc.cd", Toast.LENGTH_LONG).show();
+            drawerLayout.closeDrawers();
+        });
+        findViewById(R.id.navSettings).setOnClickListener(v -> {
+            showWindow(windowSettings);
+            drawerLayout.closeDrawers();
+        });
+        findViewById(R.id.navAbout).setOnClickListener(v -> {
+            Toast.makeText(this, "w Email · GPLv3 · isaquxet08-ai/WEmail", Toast.LENGTH_LONG).show();
+            drawerLayout.closeDrawers();
         });
 
-        btnNavInbox.setOnClickListener(v -> {
-            windowInbox.setVisibility(View.VISIBLE);
-            windowInbox.bringToFront();
-            drawerLayout.closeDrawer(GravityCompat.START);
+        View.OnClickListener avatarClick = v -> pickAvatar();
+        topAvatar.setOnClickListener(avatarClick);
+        drawerAvatar.setOnClickListener(avatarClick);
+
+        btnSavePass.setOnClickListener(v -> {
+            prefs.edit().putString("mail_pass", etPass.getText().toString()).apply();
+            Toast.makeText(this, "密码已保存", Toast.LENGTH_SHORT).show();
         });
 
-        // 发信
-        btnSend.setOnClickListener(v -> sendEmail());
+        cbSound.setOnCheckedChangeListener((b, checked) ->
+                prefs.edit().putBoolean("sound_on", checked).apply());
+
+        btnSend.setOnClickListener(v -> sendMail());
     }
 
-    // 🚨 核心魔法：让 View 可拖动的通用方法
-    private void makeDraggable(View view, View touchArea) {
-        touchArea.setOnTouchListener(new View.OnTouchListener() {
+    private void setupDrag(int titleBarId, final View window) {
+        final View bar = window.findViewById(titleBarId);
+        bar.setOnTouchListener(new View.OnTouchListener() {
+            final float[] down = new float[2];
+            final float[] start = new float[2];
+
             @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getActionMasked()) {
+            public boolean onTouch(View v, MotionEvent e) {
+                switch (e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        // 记录按下时，手指与控件左上角的相对距离
-                        dX = view.getX() - event.getRawX();
-                        dY = view.getY() - event.getRawY();
-                        break;
+                        down[0] = e.getRawX();
+                        down[1] = e.getRawY();
+                        start[0] = window.getX();
+                        start[1] = window.getY();
+                        window.bringToFront();
+                        return true;
+
                     case MotionEvent.ACTION_MOVE:
-                        // 移动时更新坐标
-                        view.animate()
-                            .x(event.getRawX() + dX)
-                            .y(event.getRawY() + dY)
-                            .setDuration(0)
-                            .start();
-                        break;
-                    default:
-                        return false;
+                        float nx = start[0] + (e.getRawX() - down[0]);
+                        float ny = start[1] + (e.getRawY() - down[1]);
+                        float maxX = Math.max(0, desktop.getWidth() - window.getWidth());
+                        float maxY = Math.max(0, desktop.getHeight() - window.getHeight());
+                        window.setX(Math.max(0, Math.min(nx, maxX)));
+                        window.setY(Math.max(0, Math.min(ny, maxY)));
+                        return true;
                 }
-                return true;
+                return false;
             }
         });
     }
 
-    private void initFakeMails() {
-        ArrayList<String> fakeMails = new ArrayList<>();
-        fakeMails.add("Microsoft Windows XP Team\n主题: 欢迎使用 Windows XP");
-        fakeMails.add("Serv00 Support\n主题: 您的VPS已就绪 (请查看附件)");
-        fakeMails.add("Termux 官方\n主题: pkg upgrade 执行完成");
-        fakeMails.add("GitHub Actions\n主题: 编译失败 - Gradle 依赖冲突");
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, fakeMails) {
-            @Override
-            public View getView(int position, View convertView, android.view.ViewGroup parent) {
-                TextView textView = (TextView) super.getView(position, convertView, parent);
-                textView.setTextSize(14);
-                textView.setTextColor(Color.parseColor("#333333"));
-                textView.setPadding(10, 25, 10, 25);
-                textView.setBackgroundColor(Color.parseColor("#FFFFFF"));
-                return textView;
-            }
-        };
-        listViewMails.setAdapter(adapter);
+    private void showWindow(View window) {
+        window.setVisibility(View.VISIBLE);
+        window.bringToFront();
+        window.post(() -> {
+            float maxX = Math.max(0, desktop.getWidth() - window.getWidth());
+            float maxY = Math.max(0, desktop.getHeight() - window.getHeight());
+            if (window.getX() < 0) window.setX(0);
+            if (window.getY() < 0) window.setY(0);
+            if (window.getX() > maxX) window.setX(maxX);
+            if (window.getY() > maxY) window.setY(maxY);
+        });
     }
 
-    private void sendEmail() {
-        ringout.start();
-        ivEnvelope.setVisibility(View.VISIBLE);
+    private void playSound(int resId) {
+        if (!prefs.getBoolean("sound_on", true)) return;
+        try {
+            MediaPlayer mp = MediaPlayer.create(this, resId);
+            if (mp != null) {
+                mp.setOnCompletionListener(MediaPlayer::release);
+                mp.start();
+            }
+        } catch (Exception ignored) {
+        }
+    }
 
-        ivOutbox.post(() -> {
-            float startX = ivOutbox.getX();
-            float endX = ivInbox.getX();
-            float deltaX = endX - startX;
+    private void flyAnimation() {
+        desktop.post(() -> {
+            int[] from = new int[2];
+            int[] to = new int[2];
+            int[] base = new int[2];
+            desktopInboxIcon.getLocationInWindow(from);
+            desktopSendIcon.getLocationInWindow(to);
+            desktop.getLocationInWindow(base);
 
-            TranslateAnimation anim = new TranslateAnimation(0, deltaX, 0, 0);
-            anim.setDuration(1500);
-            anim.setFillAfter(true);
+            float dx = to[0] - from[0];
+            float dy = to[1] - from[1];
 
-            anim.setAnimationListener(new android.view.animation.Animation.AnimationListener() {
+            ImageView fly = new ImageView(this);
+            fly.setImageResource(R.drawable.folder_icon);
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(56, 56);
+            fly.setLayoutParams(lp);
+            fly.setX(from[0] - base[0]);
+            fly.setY(from[1] - base[1]);
+            desktop.addView(fly);
+
+            TranslateAnimation anim = new TranslateAnimation(0, dx, 0, dy);
+            anim.setDuration(700);
+            anim.setFillAfter(false);
+            anim.setAnimationListener(new Animation.AnimationListener() {
                 @Override
-                public void onAnimationStart(android.view.animation.Animation animation) {}
-                @Override
-                public void onAnimationEnd(android.view.animation.Animation animation) {
-                    finishSendingProcess();
+                public void onAnimationStart(Animation a) {
                 }
+
                 @Override
-                public void onAnimationRepeat(android.view.animation.Animation animation) {}
+                public void onAnimationRepeat(Animation a) {
+                }
+
+                @Override
+                public void onAnimationEnd(Animation a) {
+                    desktop.removeView(fly);
+                }
             });
-            ivEnvelope.startAnimation(anim);
+            fly.startAnimation(anim);
         });
     }
 
-    private void finishSendingProcess() {
-        String to = etTo.getText().toString();
-        String sub = etSubject.getText().toString();
-        String body = etBody.getText().toString();
+    private void sendMail() {
+        final String to = etTo.getText().toString().trim();
+        final String subject = etSubject.getText().toString().trim();
+        final String body = etBody.getText().toString();
+        final String pass = etPass.getText().toString();
 
         if (to.isEmpty()) {
-            showResult(false, "收件人不能为空");
+            Toast.makeText(this, "请填写收件人", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (pass.isEmpty()) {
+            Toast.makeText(this, "请先在设置里填写 SMTP 密码", Toast.LENGTH_SHORT).show();
+            showWindow(windowSettings);
             return;
         }
 
+        playSound(R.raw.ringout);
+        flyAnimation();
+        btnSend.setEnabled(false);
+        statusBar.setText("正在发送 → " + to);
+
         new Thread(() -> {
-            boolean success = false;
-            String errMsg = "";
+            boolean ok = false;
+            String err = null;
             try {
                 Properties props = new Properties();
-                props.put("mail.smtp.host", "sX.serv00.com");
-                props.put("mail.smtp.port", "465");
+                props.put("mail.smtp.host", SMTP_HOST);
+                props.put("mail.smtp.port", SMTP_PORT);
                 props.put("mail.smtp.auth", "true");
-                props.put("mail.smtp.socketFactory.port", "465");
+                props.put("mail.smtp.ssl.enable", "true");
                 props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+                props.put("mail.smtp.socketFactory.port", SMTP_PORT);
+                props.put("mail.smtp.connectiontimeout", "15000");
+                props.put("mail.smtp.timeout", "15000");
 
-                Session session = Session.getInstance(props, new jakarta.mail.Authenticator() {
+                Session session = Session.getInstance(props, new Authenticator() {
+                    @Override
                     protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication("dmptyly@slda.cc.cd", "你的真实密码");
+                        return new PasswordAuthentication(MAIL_USER, pass);
                     }
                 });
 
-                Message msg = new MimeMessage(session);
-                msg.setFrom(new InternetAddress("dmptyly@slda.cc.cd"));
+                MimeMessage msg = new MimeMessage(session);
+                msg.setFrom(new InternetAddress(MAIL_USER));
                 msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
-                msg.setSubject(sub);
-                msg.setText(body);
+                msg.setSubject(subject, "UTF-8");
+                msg.setText(body, "UTF-8");
+                msg.setSentDate(new Date());
+
                 Transport.send(msg);
-                success = true;
+                ok = true;
             } catch (Exception e) {
-                e.printStackTrace();
-                errMsg = e.getMessage();
+                err = e.getMessage();
             }
 
-            boolean finalSuccess = success;
-            String finalErrMsg = errMsg;
-
-            handler.post(() -> showResult(finalSuccess, finalErrMsg));
+            final boolean success = ok;
+            final String errorMsg = err;
+            runOnUiThread(() -> {
+                btnSend.setEnabled(true);
+                String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+                if (success) {
+                    playSound(R.raw.tada);
+                    statusBar.setText("发送成功 · " + time);
+                    Toast.makeText(this, "发送成功", Toast.LENGTH_SHORT).show();
+                    etSubject.setText("");
+                    etBody.setText("");
+                } else {
+                    playSound(R.raw.chord);
+                    statusBar.setText("发送失败：" + (errorMsg == null ? "未知错误" : errorMsg));
+                    Toast.makeText(this, "发送失败", Toast.LENGTH_LONG).show();
+                }
+            });
         }).start();
     }
 
-    private void showResult(boolean success, String msg) {
-        if (ringout.isPlaying()) {
-            ringout.pause();
-            ringout.seekTo(0);
+    private void pickAvatar() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQ_AVATAR);
+        } catch (Exception e) {
+            Toast.makeText(this, "无法打开相册", Toast.LENGTH_SHORT).show();
         }
-        ivEnvelope.setVisibility(View.GONE);
+    }
 
-        if (success) {
-            MediaPlayer.create(this, R.raw.tada).start();
-            Toast.makeText(this, "发送成功！", Toast.LENGTH_SHORT).show();
-        } else {
-            MediaPlayer.create(this, R.raw.chord).start();
-            Toast.makeText(this, "发送失败: " + msg, Toast.LENGTH_LONG).show();
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_AVATAR && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            topAvatar.setImageURI(uri);
+            drawerAvatar.setImageURI(uri);
+            try {
+                getContentResolver().takePersistableUriPermission(
+                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                prefs.edit().putString("avatar_uri", uri.toString()).apply();
+            } catch (Exception ignored) {
+            }
         }
     }
 
     @Override
     public void onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START);
+            drawerLayout.closeDrawers();
         } else {
             super.onBackPressed();
         }

@@ -1,132 +1,643 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:context=".MainActivity">
 
-    <!-- 桌面层 -->
-    <RelativeLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bliss">
+        android:layout_height="match_parent">
 
-        <!-- 悬浮窗口 1：写邮件窗口 (默认隐藏) -->
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bliss" />
+
         <LinearLayout
-            android:id="@+id/windowCompose"
-            android:layout_width="300dp"
-            android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
-            android:background="@drawable/xp_window_bg"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <!-- 窗口标题栏 (用于拖动) -->
-            <LinearLayout
-                android:id="@+id/titleBarCompose"
-                android:layout_width="match_parent"
-                android:layout_height="35dp"
-                android:background="@drawable/xp_title_bar"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="8dp">
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="写邮件"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold" />
-                <TextView
-                    android:id="@+id/btnCloseCompose"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/xp_close_btn"
-                    android:text="X"
-                    android:gravity="center"
-                    android:textColor="#FFF"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <!-- 窗口内容 -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="10dp">
-                <EditText android:id="@+id/etTo" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="收件人" android:textSize="12sp" />
-                <EditText android:id="@+id/etSubject" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="主题" android:textSize="12sp" />
-                <EditText android:id="@+id/etBody" android:layout_width="match_parent" android:layout_height="100dp" android:gravity="top" android:hint="正文..." android:textSize="12sp" />
-                <Button android:id="@+id/btnSend" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end" android:text="发送 (S)" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- 悬浮窗口 2：收件箱窗口 (默认显示) -->
-        <LinearLayout
-            android:id="@+id/windowInbox"
-            android:layout_width="300dp"
-            android:layout_height="400dp"
-            android:layout_centerInParent="true"
-            android:background="@drawable/xp_window_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <!-- 窗口标题栏 (用于拖动) -->
             <LinearLayout
-                android:id="@+id/titleBarInbox"
                 android:layout_width="match_parent"
-                android:layout_height="35dp"
-                android:background="@drawable/xp_title_bar"
+                android:layout_height="52dp"
+                android:background="#CC1E5AA8"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="8dp">
+                android:paddingStart="6dp"
+                android:paddingEnd="8dp">
+
+                <ImageButton
+                    android:id="@+id/btnOpenDrawer"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="打开侧滑栏"
+                    android:src="@android:drawable/ic_menu_sort_by_size"
+                    android:tint="#FFFFFF" />
+
+                <ImageView
+                    android:id="@+id/topAvatar"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@android:color/white"
+                    android:contentDescription="头像"
+                    android:padding="2dp"
+                    android:scaleType="centerCrop"
+                    android:src="@mipmap/ic_launcher" />
+
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
                     android:layout_weight="1"
-                    android:text="收件箱"
+                    android:text="w Email"
                     android:textColor="#FFFFFF"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
-                <TextView
-                    android:id="@+id/btnCloseInbox"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:background="@drawable/xp_close_btn"
-                    android:text="X"
-                    android:gravity="center"
-                    android:textColor="#FFF"
-                    android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- 列表 -->
-            <ListView
-                android:id="@+id/listViewMails"
+            <FrameLayout
+                android:id="@+id/desktop"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:divider="#aaaaaa"
-                android:dividerHeight="1dp" />
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="20dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:id="@+id/desktopInboxBox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="6dp">
+
+                        <ImageView
+                            android:id="@+id/desktopInboxIcon"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:contentDescription="收件箱"
+                            android:src="@drawable/folder_icon" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:shadowColor="#80000000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="2"
+                            android:text="收件箱"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <Space
+                        android:layout_width="56dp"
+                        android:layout_height="1dp" />
+
+                    <LinearLayout
+                        android:id="@+id/desktopSendBox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="6dp">
+
+                        <ImageView
+                            android:id="@+id/desktopSendIcon"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:contentDescription="发件箱"
+                            android:src="@drawable/folder_icon" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:shadowColor="#80000000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="2"
+                            android:text="发件箱"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/windowInbox"
+                    android:layout_width="300dp"
+                    android:layout_height="400dp"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="24dp"
+                    android:background="@drawable/xp_window_bg"
+                    android:elevation="12dp"
+                    android:orientation="vertical"
+                    android:visibility="visible">
+
+                    <LinearLayout
+                        android:id="@+id/titleBarInbox"
+                        android:layout_width="match_parent"
+                        android:layout_height="34dp"
+                        android:background="@drawable/xp_title_bar"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="📥 收件箱 - w Email"
+                            android:textColor="#FFFFFF"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageButton
+                            android:id="@+id/btnCloseInbox"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:background="@drawable/xp_close_btn"
+                            android:contentDescription="关闭"
+                            android:scaleType="fitCenter" />
+                    </LinearLayout>
+
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:padding="10dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="暂无邮件"
+                                android:textColor="#333333"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="Serv00 配置完成后，这里会显示收件列表。"
+                                android:textColor="#666666"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </ScrollView>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/windowCompose"
+                    android:layout_width="300dp"
+                    android:layout_height="420dp"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginTop="70dp"
+                    android:background="@drawable/xp_window_bg"
+                    android:elevation="12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/titleBarCompose"
+                        android:layout_width="match_parent"
+                        android:layout_height="34dp"
+                        android:background="@drawable/xp_title_bar"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="✉️ 写邮件"
+                            android:textColor="#FFFFFF"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageButton
+                            android:id="@+id/btnCloseCompose"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:background="@drawable/xp_close_btn"
+                            android:contentDescription="关闭"
+                            android:scaleType="fitCenter" />
+                    </LinearLayout>
+
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:padding="10dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="收件人"
+                                android:textColor="#333333"
+                                android:textSize="12sp" />
+
+                            <EditText
+                                android:id="@+id/etTo"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="example@qq.com"
+                                android:inputType="textEmailAddress"
+                                android:minHeight="38dp"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="主题"
+                                android:textColor="#333333"
+                                android:textSize="12sp" />
+
+                            <EditText
+                                android:id="@+id/etSubject"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="主题"
+                                android:inputType="text"
+                                android:minHeight="38dp"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="正文"
+                                android:textColor="#333333"
+                                android:textSize="12sp" />
+
+                            <EditText
+                                android:id="@+id/etBody"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="top|start"
+                                android:hint="正文内容"
+                                android:inputType="textMultiLine"
+                                android:minLines="5"
+                                android:textSize="13sp" />
+
+                            <Button
+                                android:id="@+id/btnSend"
+                                android:layout_width="match_parent"
+                                android:layout_height="42dp"
+                                android:layout_marginTop="8dp"
+                                android:text="发送" />
+                        </LinearLayout>
+                    </ScrollView>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/windowSettings"
+                    android:layout_width="280dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="40dp"
+                    android:layout_marginTop="140dp"
+                    android:background="@drawable/xp_window_bg"
+                    android:elevation="12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/titleBarSettings"
+                        android:layout_width="match_parent"
+                        android:layout_height="34dp"
+                        android:background="@drawable/xp_title_bar"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="⚙️ 设置"
+                            android:textColor="#FFFFFF"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageButton
+                            android:id="@+id/btnCloseSettings"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:background="@drawable/xp_close_btn"
+                            android:contentDescription="关闭"
+                            android:scaleType="fitCenter" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <CheckBox
+                            android:id="@+id/cbSound"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="启用音频提醒"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="账号：dmptyly@slda.cc.cd"
+                            android:textColor="#555555"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="服务器：mail.slda.cc.cd (SMTP 465 SSL)"
+                            android:textColor="#555555"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="邮箱密码（Serv00 下来后填写）"
+                            android:textColor="#333333"
+                            android:textSize="12sp" />
+
+                        <EditText
+                            android:id="@+id/etPass"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="SMTP 密码"
+                            android:inputType="textPassword"
+                            android:minHeight="38dp"
+                            android:textSize="13sp" />
+
+                        <Button
+                            android:id="@+id/btnSavePass"
+                            android:layout_width="match_parent"
+                            android:layout_height="40dp"
+                            android:layout_marginTop="6dp"
+                            android:text="保存密码" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/statusBar"
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:background="#DD1A1A1A"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="dmptyly@slda.cc.cd · 正在建设，暂不可用"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp" />
         </LinearLayout>
+    </FrameLayout>
 
-        <!-- 底部两个文件夹图标 -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_alignParentBottom="true"
-            android:layout_marginBottom="10dp">
-            <ImageView android:id="@+id/ivOutbox" android:layout_width="50dp" android:layout_height="50dp" android:src="@drawable/folder_icon" android:layout_alignParentStart="true" android:layout_marginStart="20dp"/>
-            <ImageView android:id="@+id/ivInbox" android:layout_width="50dp" android:layout_height="50dp" android:src="@drawable/folder_icon" android:layout_alignParentEnd="true" android:layout_marginEnd="20dp"/>
-            <ImageView android:id="@+id/ivEnvelope" android:layout_width="30dp" android:layout_height="30dp" android:src="@drawable/error_icon" android:visibility="gone" />
-        </RelativeLayout>
-    </RelativeLayout>
-
-    <!-- 左侧侧滑菜单 -->
     <LinearLayout
-        android:layout_width="280dp"
+        android:layout_width="300dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:background="#FFFFFF"
+        android:fitsSystemWindows="true"
         android:orientation="vertical">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="dtmbemail@slda.cc.cd" android:padding="20dp" android:textStyle="bold" android:textSize="16sp"/>
-        <Button android:id="@+id/btnNavCompose" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="写邮件" android:layout_margin="10dp"/>
-        <Button android:id="@+id/btnNavInbox" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="收件箱" android:layout_margin="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#1E5AA8"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <ImageView
+                android:id="@+id/drawerAvatar"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:background="@android:color/white"
+                android:contentDescription="抽屉头像"
+                android:padding="2dp"
+                android:scaleType="centerCrop"
+                android:src="@mipmap/ic_launcher" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="w Email"
+                android:textColor="#FFFFFF"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="dmptyly@slda.cc.cd"
+                android:textColor="#CCFFFFFF"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="#33FFFFFF"
+                android:paddingStart="6dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="2dp"
+                android:text="正在建设 · 暂不可用"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/navCompose"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="#E8F0FE"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="✉️   写邮件"
+            android:textColor="#1E5AA8"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="20dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp"
+            android:text="常用文件夹"
+            android:textColor="#999999"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/navInbox"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="📥   收件箱"
+            android:textColor="#222222"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/navSent"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="📤   已发送"
+            android:textColor="#222222"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/navDraft"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="📝   草稿箱"
+            android:textColor="#222222"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/navTrash"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="🗑️   垃圾邮件"
+            android:textColor="#222222"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="20dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp"
+            android:text="我的邮箱"
+            android:textColor="#999999"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/navMyMail"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="📮   slda.cc.cd"
+            android:textColor="#222222"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/navSettings"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="⚙️   设置"
+            android:textColor="#222222"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/navAbout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="ℹ️   声明 / 关于"
+            android:textColor="#222222"
+            android:textSize="15sp" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:text="WEmail · GPLv3\nisaquxet08-ai/WEmail"
+            android:textColor="#999999"
+            android:textSize="11sp" />
     </LinearLayout>
+
 </androidx.drawerlayout.widget.DrawerLayout>
