@@ -53,10 +53,12 @@ public class MainActivity extends AppCompatActivity {
     private DrawerLayout drawerLayout;
     private FrameLayout desktop;
 
-    private View windowInbox, windowCompose, windowSettings;
-    private View windowAvatarMenu, windowAvatarSource; // 新增的两个头像操作窗口
+    // 5个独立窗口
+    private View windowInbox, windowSent, windowDraft, windowTrash, windowCompose;
+    private View windowSettings, windowAvatarMenu, windowAvatarSource;
+    
     private ImageView desktopInboxIcon, desktopSendIcon, topAvatar, drawerAvatar;
-    private TextView statusBar, tvFolderTitle, tvFolderContentTitle, tvFolderContent, drawerAccount;
+    private TextView statusBar, drawerAccount;
     private EditText etTo, etSubject, etBody, etPass, etMailUser, etSmtpHost, etSmtpPort, etImapHost, etImapPort;
     private CheckBox cbSound;
     private Button btnSend, btnSavePass;
@@ -74,7 +76,11 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout = findViewById(R.id.drawerLayout);
         desktop = findViewById(R.id.desktop);
 
+        // 绑定5个独立窗口
         windowInbox = findViewById(R.id.windowInbox);
+        windowSent = findViewById(R.id.windowSent);
+        windowDraft = findViewById(R.id.windowDraft);
+        windowTrash = findViewById(R.id.windowTrash);
         windowCompose = findViewById(R.id.windowCompose);
         windowSettings = findViewById(R.id.windowSettings);
 
@@ -84,10 +90,6 @@ public class MainActivity extends AppCompatActivity {
         desktopSendIcon = findViewById(R.id.desktopSendIcon);
         statusBar = findViewById(R.id.statusBar);
         drawerAccount = findViewById(R.id.drawerAccount);
-
-        tvFolderTitle = findViewById(R.id.tvFolderTitle);
-        tvFolderContentTitle = findViewById(R.id.tvFolderContentTitle);
-        tvFolderContent = findViewById(R.id.tvFolderContent);
 
         etTo = findViewById(R.id.etTo);
         etSubject = findViewById(R.id.etSubject);
@@ -102,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
         btnSend = findViewById(R.id.btnSend);
         btnSavePass = findViewById(R.id.btnSavePass);
 
-        // 纯 Java 动态构建两个头像操作窗口（免去 XML 冗余代码）
+        // 动态构建头像窗口
         windowAvatarMenu = buildAvatarMenuWindow();
         windowAvatarSource = buildAvatarSourceWindow();
         desktop.addView(windowAvatarMenu);
@@ -113,27 +115,36 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btnOpenDrawer).setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 
+        // 绑定所有窗口的拖动
         setupDrag(R.id.titleBarInbox, windowInbox);
+        setupDrag(R.id.titleBarSent, windowSent);
+        setupDrag(R.id.titleBarDraft, windowDraft);
+        setupDrag(R.id.titleBarTrash, windowTrash);
         setupDrag(R.id.titleBarCompose, windowCompose);
         setupDrag(R.id.titleBarSettings, windowSettings);
 
+        // 绑定所有关闭按钮
         findViewById(R.id.btnCloseInbox).setOnClickListener(v -> windowInbox.setVisibility(View.GONE));
+        findViewById(R.id.btnCloseSent).setOnClickListener(v -> windowSent.setVisibility(View.GONE));
+        findViewById(R.id.btnCloseDraft).setOnClickListener(v -> windowDraft.setVisibility(View.GONE));
+        findViewById(R.id.btnCloseTrash).setOnClickListener(v -> windowTrash.setVisibility(View.GONE));
         findViewById(R.id.btnCloseCompose).setOnClickListener(v -> windowCompose.setVisibility(View.GONE));
         findViewById(R.id.btnCloseSettings).setOnClickListener(v -> windowSettings.setVisibility(View.GONE));
 
-        findViewById(R.id.desktopInboxBox).setOnClickListener(v -> showFolder("📥 收件箱 - w Email", "暂无邮件", "Serv00 配置完成后，这里会显示收件列表。"));
+        // 桌面图标
+        findViewById(R.id.desktopInboxBox).setOnClickListener(v -> showWindow(windowInbox));
         findViewById(R.id.desktopSendBox).setOnClickListener(v -> showWindow(windowCompose));
 
+        // 侧滑栏点击事件（独立打开对应窗口）
         findViewById(R.id.navCompose).setOnClickListener(v -> { showWindow(windowCompose); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navInbox).setOnClickListener(v -> { showFolder("📥 收件箱 - w Email", "暂无邮件", "暂无收到的邮件。"); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navSent).setOnClickListener(v -> { showFolder("📤 已发送 - w Email", "暂无已发送", "您还没有发送过邮件。"); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navDraft).setOnClickListener(v -> { showFolder("📝 草稿箱 - w Email", "暂无草稿", "没有保存的草稿。"); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navTrash).setOnClickListener(v -> { showFolder("🗑️ 垃圾邮件 - w Email", "空空如也", "垃圾箱里没有邮件。"); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navInbox).setOnClickListener(v -> { showWindow(windowInbox); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navSent).setOnClickListener(v -> { showWindow(windowSent); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navDraft).setOnClickListener(v -> { showWindow(windowDraft); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navTrash).setOnClickListener(v -> { showWindow(windowTrash); drawerLayout.closeDrawers(); });
         findViewById(R.id.navMyMail).setOnClickListener(v -> { Toast.makeText(this, "当前账号：" + prefs.getString("mail_user", "未设置"), Toast.LENGTH_LONG).show(); drawerLayout.closeDrawers(); });
         findViewById(R.id.navSettings).setOnClickListener(v -> { showWindow(windowSettings); drawerLayout.closeDrawers(); });
         findViewById(R.id.navAbout).setOnClickListener(v -> { Toast.makeText(this, "w Email · GPLv3", Toast.LENGTH_LONG).show(); drawerLayout.closeDrawers(); });
 
-        // 点击头像弹出菜单，而不是直接开相册
         View.OnClickListener avatarClick = v -> showWindow(windowAvatarMenu);
         topAvatar.setOnClickListener(avatarClick);
         drawerAvatar.setOnClickListener(avatarClick);
@@ -143,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
         btnSend.setOnClickListener(v -> sendMail());
     }
 
-    // 动态构建：头像操作窗口
+    // --- 以下是头像相关、网络请求、拖动逻辑 ---
     private View buildAvatarMenuWindow() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -181,10 +192,7 @@ public class MainActivity extends AppCompatActivity {
         btnChange.setText("更换头像");
         btnChange.setBackgroundResource(R.drawable.xp_black_btn);
         btnChange.setTextColor(Color.BLACK);
-        btnChange.setOnClickListener(v -> {
-            root.setVisibility(View.GONE);
-            showWindow(windowAvatarSource);
-        });
+        btnChange.setOnClickListener(v -> { root.setVisibility(View.GONE); showWindow(windowAvatarSource); });
         body.addView(btnChange);
 
         Button btnView = new Button(this);
@@ -194,10 +202,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         btnLp.topMargin = 20;
         btnView.setLayoutParams(btnLp);
-        btnView.setOnClickListener(v -> {
-            root.setVisibility(View.GONE);
-            showAvatarPreview();
-        });
+        btnView.setOnClickListener(v -> { root.setVisibility(View.GONE); showAvatarPreview(); });
         body.addView(btnView);
 
         root.addView(body);
@@ -205,7 +210,6 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
 
-    // 动态构建：选择来源窗口
     private View buildAvatarSourceWindow() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -243,10 +247,7 @@ public class MainActivity extends AppCompatActivity {
         btnCamera.setText("通过相机");
         btnCamera.setBackgroundResource(R.drawable.xp_black_btn);
         btnCamera.setTextColor(Color.BLACK);
-        btnCamera.setOnClickListener(v -> {
-            root.setVisibility(View.GONE);
-            takePhoto();
-        });
+        btnCamera.setOnClickListener(v -> { root.setVisibility(View.GONE); takePhoto(); });
         body.addView(btnCamera);
 
         Button btnGallery = new Button(this);
@@ -256,10 +257,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         btnLp.topMargin = 20;
         btnGallery.setLayoutParams(btnLp);
-        btnGallery.setOnClickListener(v -> {
-            root.setVisibility(View.GONE);
-            pickAvatar();
-        });
+        btnGallery.setOnClickListener(v -> { root.setVisibility(View.GONE); pickAvatar(); });
         body.addView(btnGallery);
 
         root.addView(body);
@@ -279,9 +277,9 @@ public class MainActivity extends AppCompatActivity {
         } else if ("file".equals(type)) {
             File f = new File(getFilesDir(), "avatar.jpg");
             if (f.exists()) iv.setImageBitmap(BitmapFactory.decodeFile(f.getAbsolutePath()));
-            else iv.setImageResource(R.drawable.app_icon);
+            else iv.setImageResource(R.mipmap.ic_launcher);
         } else {
-            iv.setImageResource(R.drawable.app_icon);
+            iv.setImageResource(R.mipmap.ic_launcher);
         }
 
         new AlertDialog.Builder(this)
@@ -293,11 +291,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void takePhoto() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        try {
-            startActivityForResult(intent, REQ_CAMERA);
-        } catch (Exception e) {
-            Toast.makeText(this, "无法调用相机", Toast.LENGTH_SHORT).show();
-        }
+        try { startActivityForResult(intent, REQ_CAMERA); } 
+        catch (Exception e) { Toast.makeText(this, "无法调用相机", Toast.LENGTH_SHORT).show(); }
     }
 
     private void pickAvatar() {
@@ -305,11 +300,8 @@ public class MainActivity extends AppCompatActivity {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("image/*");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        try {
-            startActivityForResult(intent, REQ_AVATAR);
-        } catch (Exception e) {
-            Toast.makeText(this, "无法打开相册", Toast.LENGTH_SHORT).show();
-        }
+        try { startActivityForResult(intent, REQ_AVATAR); } 
+        catch (Exception e) { Toast.makeText(this, "无法打开相册", Toast.LENGTH_SHORT).show(); }
     }
 
     private void loadAvatar() {
@@ -383,13 +375,6 @@ public class MainActivity extends AppCompatActivity {
                 .apply();
         drawerAccount.setText(etMailUser.getText().toString().trim());
         Toast.makeText(this, "服务器配置已保存", Toast.LENGTH_SHORT).show();
-    }
-
-    private void showFolder(String title, String contentTitle, String content) {
-        tvFolderTitle.setText(title);
-        tvFolderContentTitle.setText(contentTitle);
-        tvFolderContent.setText(content);
-        showWindow(windowInbox);
     }
 
     private void setupDrag(int titleBarId, final View window) {
