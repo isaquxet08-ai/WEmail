@@ -50,7 +50,7 @@
                     android:contentDescription="头像"
                     android:padding="2dp"
                     android:scaleType="centerCrop"
-                    android:src="@mipmap/ic_launcher" />
+                    android:src="@drawable/app_icon" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -168,6 +168,7 @@
                         android:paddingEnd="4dp">
 
                         <TextView
+                            android:id="@+id/tvFolderTitle"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
@@ -197,6 +198,7 @@
                             android:orientation="vertical">
 
                             <TextView
+                                android:id="@+id/tvFolderContentTitle"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:text="暂无邮件"
@@ -205,6 +207,7 @@
                                 android:textStyle="bold" />
 
                             <TextView
+                                android:id="@+id/tvFolderContent"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="8dp"
@@ -328,10 +331,10 @@
 
                 <LinearLayout
                     android:id="@+id/windowSettings"
-                    android:layout_width="280dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="40dp"
-                    android:layout_marginTop="140dp"
+                    android:layout_width="300dp"
+                    android:layout_height="460dp"
+                    android:layout_marginStart="30dp"
+                    android:layout_marginTop="30dp"
                     android:background="@drawable/xp_window_bg"
                     android:elevation="12dp"
                     android:orientation="vertical"
@@ -351,7 +354,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="⚙️ 设置"
+                            android:text="⚙️ 服务器设置"
                             android:textColor="#FFFFFF"
                             android:textSize="13sp"
                             android:textStyle="bold" />
@@ -365,60 +368,138 @@
                             android:scaleType="fitCenter" />
                     </LinearLayout>
 
-                    <LinearLayout
+                    <ScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
+                        android:layout_height="match_parent"
                         android:padding="12dp">
 
-                        <CheckBox
-                            android:id="@+id/cbSound"
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:checked="true"
-                            android:text="启用音频提醒"
-                            android:textSize="13sp" />
+                            android:orientation="vertical">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:text="账号：dmptyly@slda.cc.cd"
-                            android:textColor="#555555"
-                            android:textSize="12sp" />
+                            <CheckBox
+                                android:id="@+id/cbSound"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:text="启用 XP 音效提醒"
+                                android:textSize="13sp" />
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="服务器：mail.slda.cc.cd (SMTP 465 SSL)"
-                            android:textColor="#555555"
-                            android:textSize="12sp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="邮箱账号"
+                                android:textColor="#333333"
+                                android:textSize="12sp" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:text="邮箱密码（Serv00 下来后填写）"
-                            android:textColor="#333333"
-                            android:textSize="12sp" />
+                            <EditText
+                                android:id="@+id/etMailUser"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="dmptyly@slda.cc.cd"
+                                android:inputType="textEmailAddress"
+                                android:minHeight="38dp"
+                                android:textSize="13sp" />
 
-                        <EditText
-                            android:id="@+id/etPass"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="SMTP 密码"
-                            android:inputType="textPassword"
-                            android:minHeight="38dp"
-                            android:textSize="13sp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="邮箱密码"
+                                android:textColor="#333333"
+                                android:textSize="12sp" />
 
-                        <Button
-                            android:id="@+id/btnSavePass"
-                            android:layout_width="match_parent"
-                            android:layout_height="40dp"
-                            android:layout_marginTop="6dp"
-                            android:text="保存密码" />
-                    </LinearLayout>
+                            <EditText
+                                android:id="@+id/etPass"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="SMTP / IMAP 密码"
+                                android:inputType="textPassword"
+                                android:minHeight="38dp"
+                                android:textSize="13sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="发送服务器 (SMTP)"
+                                android:textColor="#1E5AA8"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <EditText
+                                    android:id="@+id/etSmtpHost"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="2"
+                                    android:hint="mail.slda.cc.cd"
+                                    android:inputType="text"
+                                    android:minHeight="38dp"
+                                    android:textSize="13sp" />
+
+                                <EditText
+                                    android:id="@+id/etSmtpPort"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="6dp"
+                                    android:layout_weight="1"
+                                    android:hint="端口 465"
+                                    android:inputType="number"
+                                    android:minHeight="38dp"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="收件服务器 (IMAP)"
+                                android:textColor="#1E5AA8"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <EditText
+                                    android:id="@+id/etImapHost"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="2"
+                                    android:hint="mail.slda.cc.cd"
+                                    android:inputType="text"
+                                    android:minHeight="38dp"
+                                    android:textSize="13sp" />
+
+                                <EditText
+                                    android:id="@+id/etImapPort"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="6dp"
+                                    android:layout_weight="1"
+                                    android:hint="端口 993"
+                                    android:inputType="number"
+                                    android:minHeight="38dp"
+                                    android:textSize="13sp" />
+                            </LinearLayout>
+
+                            <Button
+                                android:id="@+id/btnSavePass"
+                                android:layout_width="match_parent"
+                                android:layout_height="42dp"
+                                android:layout_marginTop="16dp"
+                                android:text="保存全部配置" />
+                        </LinearLayout>
+                    </ScrollView>
                 </LinearLayout>
 
             </FrameLayout>
@@ -431,7 +512,7 @@
                 android:gravity="center_vertical"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
-                android:text="dmptyly@slda.cc.cd · 正在建设，暂不可用"
+                android:text="准备就绪 · 正在建设"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -460,7 +541,7 @@
                 android:contentDescription="抽屉头像"
                 android:padding="2dp"
                 android:scaleType="centerCrop"
-                android:src="@mipmap/ic_launcher" />
+                android:src="@drawable/app_icon" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -472,25 +553,13 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/drawerAccount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="dmptyly@slda.cc.cd"
                 android:textColor="#CCFFFFFF"
                 android:textSize="12sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:background="#33FFFFFF"
-                android:paddingStart="6dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="2dp"
-                android:text="正在建设 · 暂不可用"
-                android:textColor="#FFFFFF"
-                android:textSize="10sp" />
         </LinearLayout>
 
         <TextView
@@ -608,7 +677,7 @@
             android:gravity="center_vertical"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
-            android:text="⚙️   设置"
+            android:text="⚙️   服务器设置"
             android:textColor="#222222"
             android:textSize="15sp" />
 
