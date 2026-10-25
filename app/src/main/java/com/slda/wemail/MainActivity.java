@@ -487,7 +487,7 @@ public class MainActivity extends AppCompatActivity {
             int[] from = new int[2]; int[] to = new int[2]; int[] base = new int[2];
             desktopInboxIcon.getLocationInWindow(from); desktopSendIcon.getLocationInWindow(to); desktop.getLocationInWindow(base);
             ImageView fly = new ImageView(this);
-            fly.setImageResource(R.drawable.folder_icon);
+            fly.setImageResource(R.drawable.mail_icon);
             fly.setLayoutParams(new FrameLayout.LayoutParams(56, 56));
             fly.setX(from[0] - base[0]); fly.setY(from[1] - base[1]);
             desktop.addView(fly);
