@@ -28,7 +28,7 @@ jobs:
         distribution: 'temurin'
 
     - name: 4. 配置 Gradle 构建工具
-      uses: actions/gradle/setup-gradle@v3
+      uses: gradle/actions/setup-gradle@v3
 
     - name: 5. 执行编译打包 (Release版)
       env:
