@@ -52,6 +52,10 @@ public class MainActivity extends AppCompatActivity {
     private View windowSettings, windowAvatarMenu, windowAvatarSource;
     private ImageView desktopInboxIcon, desktopSendIcon, topAvatar, drawerAvatar;
     private TextView statusBar, drawerAccount, navMyMail;
+    private LinearLayout listInbox, listSent, listDraft, listTrash;
+    private TextView tvInboxEmpty;
+    private LinearLayout listInbox, listSent, listDraft, listTrash;
+    private TextView tvInboxEmpty;
     
     private EditText etTo, etSubject, etBody, etMailPrefix, etMailDomain;
     private EditText etImapHost, etImapUser, etImapPass, etImapPort;
@@ -85,6 +89,16 @@ public class MainActivity extends AppCompatActivity {
         statusBar = findViewById(R.id.statusBar);
         drawerAccount = findViewById(R.id.drawerAccount);
         navMyMail = findViewById(R.id.navMyMail);
+        listInbox = findViewById(R.id.listInbox);
+        listSent = findViewById(R.id.listSent);
+        listDraft = findViewById(R.id.listDraft);
+        listTrash = findViewById(R.id.listTrash);
+        tvInboxEmpty = findViewById(R.id.tvInboxEmpty);
+        listInbox = findViewById(R.id.listInbox);
+        listSent = findViewById(R.id.listSent);
+        listDraft = findViewById(R.id.listDraft);
+        listTrash = findViewById(R.id.listTrash);
+        tvInboxEmpty = findViewById(R.id.tvInboxEmpty);
 
         etTo = findViewById(R.id.etTo); etSubject = findViewById(R.id.etSubject); etBody = findViewById(R.id.etBody);
         etMailPrefix = findViewById(R.id.etMailPrefix); etMailDomain = findViewById(R.id.etMailDomain);
@@ -114,7 +128,17 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnCloseSent).setOnClickListener(v -> windowSent.setVisibility(View.GONE));
         findViewById(R.id.btnCloseDraft).setOnClickListener(v -> windowDraft.setVisibility(View.GONE));
         findViewById(R.id.btnCloseTrash).setOnClickListener(v -> windowTrash.setVisibility(View.GONE));
-        findViewById(R.id.btnCloseCompose).setOnClickListener(v -> windowCompose.setVisibility(View.GONE));
+        findViewById(R.id.btnCloseCompose).setOnClickListener(v -> {
+            windowCompose.setVisibility(View.GONE);
+            String to = etTo.getText().toString().trim();
+            String sub = etSubject.getText().toString().trim();
+            String body = etBody.getText().toString().trim();
+            if (!to.isEmpty() || !sub.isEmpty() || !body.isEmpty()) {
+                saveMail("draft", to, sub, body);
+                Toast.makeText(this, "已保存至草稿箱", Toast.LENGTH_SHORT).show();
+                loadEmails();
+            }
+        });
         findViewById(R.id.btnCloseSettings).setOnClickListener(v -> windowSettings.setVisibility(View.GONE));
 
         findViewById(R.id.desktopInboxBox).setOnClickListener(v -> showWindow(windowInbox));
@@ -140,6 +164,8 @@ public class MainActivity extends AppCompatActivity {
 
         btnSavePass.setOnClickListener(v -> saveSettings());
         btnSend.setOnClickListener(v -> sendMail());
+        loadEmails();
+        loadEmails();
     }
     
     private String getFullEmail() {
@@ -304,6 +330,42 @@ public class MainActivity extends AppCompatActivity {
         navMyMail.setText("📮   " + (domain.isEmpty() ? "未设置域名" : domain));
     }
 
+    
+    private void saveMail(String folder, String to, String subject, String body) {
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(prefs.getString("mails_" + folder, "[]"));
+            org.json.JSONObject obj = new org.json.JSONObject();
+            obj.put("to", to);
+            obj.put("subject", subject);
+            obj.put("body", body);
+            obj.put("time", new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(new Date()));
+            arr.put(obj);
+            prefs.edit().putString("mails_" + folder, arr.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    private void loadEmails() {
+        loadList("sent", listSent);
+        loadList("draft", listDraft);
+        loadList("trash", listTrash);
+    }
+
+    private void loadList(String folder, LinearLayout container) {
+        container.removeAllViews();
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(prefs.getString("mails_" + folder, "[]"));
+            for (int i = arr.length() - 1; i >= 0; i--) {
+                org.json.JSONObject obj = arr.getJSONObject(i);
+                TextView tv = new TextView(this);
+                tv.setText(obj.getString("to") + "\n" + obj.getString("subject") + "  (" + obj.getString("time") + ")");
+                tv.setTextSize(13);
+                tv.setPadding(10, 10, 10, 10);
+                tv.setBackgroundColor(folder.equals("draft") ? 0xFFFFF0D0 : 0x00000000);
+                container.addView(tv);
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void sendMail() {
         final String to = etTo.getText().toString().trim();
         final String subject = etSubject.getText().toString().trim();
@@ -369,7 +431,9 @@ public class MainActivity extends AppCompatActivity {
                     playSound(R.raw.tada);
                     statusBar.setText("发送成功 · " + time);
                     Toast.makeText(this, "发送成功", Toast.LENGTH_SHORT).show();
-                    etSubject.setText(""); etBody.setText("");
+                    saveMail("sent", to, subject, body);
+                    etTo.setText(""); etSubject.setText(""); etBody.setText("");
+                    loadEmails();
                 } else {
                     playSound(R.raw.chord);
                     statusBar.setText("发送失败：" + (errorMsg == null ? "未知错误" : errorMsg));

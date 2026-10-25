@@ -33,7 +33,8 @@
                     </LinearLayout>
                     <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="10dp">
                         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="暂无邮件" android:textSize="15sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/tvInboxEmpty" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="暂无邮件" android:textSize="15sp" android:textStyle="bold" />
+<LinearLayout android:id="@+id/listInbox" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="10dp" />
                         </LinearLayout>
                     </ScrollView>
                 </LinearLayout>
@@ -42,18 +43,27 @@
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="📤 已发送" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
                         <ImageButton android:id="@+id/btnCloseSent" android:layout_width="24dp" android:layout_height="24dp" android:background="@drawable/xp_close_btn" />
                     </LinearLayout>
+                    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="10dp">
+                        <LinearLayout android:id="@+id/listSent" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                    </ScrollView>
                 </LinearLayout>
                 <LinearLayout android:id="@+id/windowDraft" android:layout_width="300dp" android:layout_height="400dp" android:layout_marginStart="60dp" android:layout_marginTop="60dp" android:background="@drawable/xp_window_bg" android:elevation="12dp" android:orientation="vertical" android:visibility="gone">
                     <LinearLayout android:id="@+id/titleBarDraft" android:layout_width="match_parent" android:layout_height="34dp" android:background="@drawable/xp_title_bar" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="8dp" android:paddingEnd="4dp">
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="📝 草稿箱" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
                         <ImageButton android:id="@+id/btnCloseDraft" android:layout_width="24dp" android:layout_height="24dp" android:background="@drawable/xp_close_btn" />
                     </LinearLayout>
+                    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="10dp">
+                        <LinearLayout android:id="@+id/listDraft" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                    </ScrollView>
                 </LinearLayout>
                 <LinearLayout android:id="@+id/windowTrash" android:layout_width="300dp" android:layout_height="400dp" android:layout_marginStart="80dp" android:layout_marginTop="80dp" android:background="@drawable/xp_window_bg" android:elevation="12dp" android:orientation="vertical" android:visibility="gone">
                     <LinearLayout android:id="@+id/titleBarTrash" android:layout_width="match_parent" android:layout_height="34dp" android:background="@drawable/xp_title_bar" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="8dp" android:paddingEnd="4dp">
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="🗑️ 垃圾邮件" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
                         <ImageButton android:id="@+id/btnCloseTrash" android:layout_width="24dp" android:layout_height="24dp" android:background="@drawable/xp_close_btn" />
                     </LinearLayout>
+                    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="10dp">
+                        <LinearLayout android:id="@+id/listTrash" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                    </ScrollView>
                 </LinearLayout>
                 <LinearLayout android:id="@+id/windowCompose" android:layout_width="300dp" android:layout_height="420dp" android:layout_marginStart="32dp" android:layout_marginTop="70dp" android:background="@drawable/xp_window_bg" android:elevation="12dp" android:orientation="vertical" android:visibility="gone">
                     <LinearLayout android:id="@+id/titleBarCompose" android:layout_width="match_parent" android:layout_height="34dp" android:background="@drawable/xp_title_bar" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="8dp" android:paddingEnd="4dp">
