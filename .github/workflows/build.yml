@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write # 🚨 必须要有这个权限才能发布 Release
 
 jobs:
   build:
@@ -33,27 +33,28 @@ jobs:
         gradle-version: 8.2
         cache-disabled: true
 
-    # 🚨 核心降噪魔法 🚨
     - name: 5. 执行编译打包 (日志降噪版)
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
-        # 把所有的输出重定向到 build.log，不直接显示在屏幕上
         if ! gradle assembleRelease --console=plain > build.log 2>&1; then
           echo "=================================================="
           echo "❌ 编译失败！以下是过滤后的核心报错信息："
           echo "=================================================="
-          # 只抓取包含 What went wrong、error:、e: 的报错行及上下文
           grep -E -A 10 -B 2 "What went wrong|e: |error:|FAILURE:" build.log || tail -n 30 build.log
           exit 1
         else
           echo "✅ 编译成功！没有发现任何错误。"
         fi
 
-    - name: 6. 自动发布到发行版 (Releases)
-      uses: actions/upload-artifact@v4
+    # 🚨 换回 Release 发布，并自动打上版本号
+    - name: 6. 发布到发行版 (Releases)
+      uses: softprops/action-gh-release@v2
       with:
-        name: WEmail-Debug-APK
-        path: app/build/outputs/apk/release/*.apk
+        tag_name: v1.0.${{ github.run_number }}
+        name: WEmail v1.0.${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: app/build/outputs/apk/release/*.apk
