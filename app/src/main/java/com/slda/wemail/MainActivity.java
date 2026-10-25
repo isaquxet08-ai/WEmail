@@ -143,13 +143,13 @@ public class MainActivity extends AppCompatActivity {
         });
         findViewById(R.id.btnCloseSettings).setOnClickListener(v -> windowSettings.setVisibility(View.GONE));
 
-        findViewById(R.id.desktopInboxBox).setOnClickListener(v -> { showWindow(windowInbox); fetchInboxEmails(); });
+        findViewById(R.id.desktopInboxBox).setOnClickListener(v -> { showWindow(windowInbox); fetchServerEmails("INBOX", "inbox", listInbox, tvInboxEmpty); });
         findViewById(R.id.desktopSendBox).setOnClickListener(v -> showWindow(windowCompose));
 
         findViewById(R.id.navCompose).setOnClickListener(v -> { showWindow(windowCompose); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navInbox).setOnClickListener(v -> { showWindow(windowInbox); fetchInboxEmails(); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navSent).setOnClickListener(v -> { showWindow(windowSent); drawerLayout.closeDrawers(); });
-        findViewById(R.id.navDraft).setOnClickListener(v -> { showWindow(windowDraft); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navInbox).setOnClickListener(v -> { showWindow(windowInbox); fetchServerEmails("INBOX", "inbox", listInbox, tvInboxEmpty); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navSent).setOnClickListener(v -> { showWindow(windowSent); fetchServerEmails("SENT", "sent", listSent, null); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navDraft).setOnClickListener(v -> { showWindow(windowDraft); fetchServerEmails("DRAFT", "draft", listDraft, null); drawerLayout.closeDrawers(); });
         findViewById(R.id.navTrash).setOnClickListener(v -> { showWindow(windowTrash); drawerLayout.closeDrawers(); });
         findViewById(R.id.navMyMail).setOnClickListener(v -> { Toast.makeText(this, "当前账号：" + getFullEmail(), Toast.LENGTH_LONG).show(); drawerLayout.closeDrawers(); });
         findViewById(R.id.navSettings).setOnClickListener(v -> { showWindow(windowSettings); drawerLayout.closeDrawers(); });
@@ -369,7 +369,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     
-    private void fetchInboxEmails() {
+    
+    private void fetchServerEmails(String targetFolderType, String cacheKey, LinearLayout listContainer, TextView emptyView) {
         final String imapHost = prefs.getString("imap_host", "");
         final String imapPort = prefs.getString("imap_port", "");
         final String imapUser = prefs.getString("imap_user", "");
@@ -377,13 +378,15 @@ public class MainActivity extends AppCompatActivity {
         final boolean imapSsl = prefs.getBoolean("imap_ssl", true);
 
         if (imapHost.isEmpty() || imapUser.isEmpty() || imapPass.isEmpty()) {
-            Toast.makeText(this, "请先在设置中填写收件服务器配置", Toast.LENGTH_SHORT).show();
+            if (emptyView != null) emptyView.setText("请先在设置中填写收件服务器配置");
             return;
         }
 
-        tvInboxEmpty.setText("正在拉取收件箱...");
-        tvInboxEmpty.setVisibility(View.VISIBLE);
-        listInbox.removeAllViews();
+        if (emptyView != null) {
+            emptyView.setText("正在从服务器拉取...");
+            emptyView.setVisibility(View.VISIBLE);
+        }
+        listContainer.removeAllViews();
 
         new Thread(() -> {
             List<String> mailList = new ArrayList<>();
@@ -395,20 +398,37 @@ public class MainActivity extends AppCompatActivity {
                 Store store = session.getStore();
                 store.connect(imapHost, Integer.parseInt(imapPort), imapUser, imapPass);
                 
-                Folder inbox = store.getFolder("INBOX");
-                inbox.open(Folder.READ_ONLY);
-                Message[] messages = inbox.getMessages();
-                
-                int start = Math.max(0, messages.length - 10);
-                for (int i = messages.length - 1; i >= start; i--) {
-                    Message msg = messages[i];
-                    String from = msg.getFrom() != null && msg.getFrom().length > 0 ? msg.getFrom()[0].toString() : "未知发件人";
-                    String subject = msg.getSubject() != null ? msg.getSubject() : "(无主题)";
-                    Date date = msg.getSentDate() != null ? msg.getSentDate() : new Date();
-                    String time = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(date);
-                    mailList.add(from + "\n" + subject + "  (" + time + ")");
+                // 自动匹配不同邮箱服务器的文件夹名
+                Folder targetFolder = null;
+                if (targetFolderType.equals("INBOX")) {
+                    targetFolder = store.getFolder("INBOX");
+                } else {
+                    Folder[] folders = store.getDefaultFolder().list("*");
+                    for (Folder f : folders) {
+                        String name = f.getName().toUpperCase();
+                        if (targetFolderType.equals("SENT") && name.contains("SENT")) { targetFolder = f; break; }
+                        if (targetFolderType.equals("DRAFT") && name.contains("DRAFT")) { targetFolder = f; break; }
+                        if (targetFolderType.equals("TRASH") && (name.contains("TRASH") || name.contains("DELETED"))) { targetFolder = f; break; }
+                    }
                 }
-                inbox.close(false);
+
+                if (targetFolder == null) {
+                    error = "服务器上找不到该文件夹";
+                } else {
+                    targetFolder.open(Folder.READ_ONLY);
+                    Message[] messages = targetFolder.getMessages();
+                    int start = Math.max(0, messages.length - 10);
+                    for (int i = messages.length - 1; i >= start; i--) {
+                        Message msg = messages[i];
+                        String from = msg.getFrom() != null && msg.getFrom().length > 0 ? msg.getFrom()[0].toString() : "未知";
+                        String subject = msg.getSubject() != null ? msg.getSubject() : "(无主题)";
+                        Date date = msg.getSentDate() != null ? msg.getSentDate() : new Date();
+                        String time = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(date);
+                        mailList.add(from + "
+" + subject + "  (" + time + ")");
+                    }
+                    targetFolder.close(false);
+                }
                 store.close();
             } catch (Exception e) {
                 error = e.getMessage();
@@ -418,24 +438,30 @@ public class MainActivity extends AppCompatActivity {
             final List<String> finalList = mailList;
             runOnUiThread(() -> {
                 if (err != null) {
-                    tvInboxEmpty.setText("拉取失败：" + err);
-                    tvInboxEmpty.setVisibility(View.VISIBLE);
+                    if (emptyView != null) {
+                        emptyView.setText("拉取失败：" + err);
+                        emptyView.setVisibility(View.VISIBLE);
+                    } else {
+                        Toast.makeText(this, "拉取失败：" + err, Toast.LENGTH_SHORT).show();
+                    }
                 } else if (finalList.isEmpty()) {
-                    tvInboxEmpty.setText("收件箱为空");
-                    tvInboxEmpty.setVisibility(View.VISIBLE);
+                    if (emptyView != null) {
+                        emptyView.setText("此文件夹为空");
+                        emptyView.setVisibility(View.VISIBLE);
+                    }
                 } else {
-                    tvInboxEmpty.setVisibility(View.GONE);
+                    if (emptyView != null) emptyView.setVisibility(View.GONE);
                     for (String mailStr : finalList) {
                         TextView tv = new TextView(this);
                         tv.setText(mailStr);
                         tv.setTextSize(13);
                         tv.setPadding(10, 10, 10, 10);
-                        listInbox.addView(tv);
+                        listContainer.addView(tv);
                         
                         View divider = new View(this);
                         divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
                         divider.setBackgroundColor(0xFFCCCCCC);
-                        listInbox.addView(divider);
+                        listContainer.addView(divider);
                     }
                 }
             });
@@ -459,7 +485,7 @@ public class MainActivity extends AppCompatActivity {
             showWindow(windowSettings); return;
         }
 
-        playSound(R.raw.ringout);
+        startDialSound();
         flyAnimation();
         btnSend.setEnabled(false);
         statusBar.setText("正在发送 → " + to);
@@ -507,7 +533,7 @@ public class MainActivity extends AppCompatActivity {
                     playSound(R.raw.tada);
                     statusBar.setText("发送成功 · " + time);
                     Toast.makeText(this, "发送成功", Toast.LENGTH_SHORT).show();
-                    saveMail("sent", to, subject, body);
+                    // 发件成功，不在本地存根，等用户点开已发送时会自动从服务器拉取
                     etTo.setText(""); etSubject.setText(""); etBody.setText("");
                     loadEmails();
                 } else {
