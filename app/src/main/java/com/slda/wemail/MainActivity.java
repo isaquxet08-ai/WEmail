@@ -1,19 +1,28 @@
 package com.slda.wemail;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,6 +30,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -37,11 +48,13 @@ import jakarta.mail.internet.MimeMessage;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQ_AVATAR = 1001;
+    private static final int REQ_CAMERA = 1002;
 
     private DrawerLayout drawerLayout;
     private FrameLayout desktop;
 
     private View windowInbox, windowCompose, windowSettings;
+    private View windowAvatarMenu, windowAvatarSource; // 新增的两个头像操作窗口
     private ImageView desktopInboxIcon, desktopSendIcon, topAvatar, drawerAvatar;
     private TextView statusBar, tvFolderTitle, tvFolderContentTitle, tvFolderContent, drawerAccount;
     private EditText etTo, etSubject, etBody, etPass, etMailUser, etSmtpHost, etSmtpPort, etImapHost, etImapPort;
@@ -49,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnSend, btnSavePass;
 
     private SharedPreferences prefs;
+    private Uri currentAvatarUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,20 +102,16 @@ public class MainActivity extends AppCompatActivity {
         btnSend = findViewById(R.id.btnSend);
         btnSavePass = findViewById(R.id.btnSavePass);
 
-        // 加载保存的配置
+        // 纯 Java 动态构建两个头像操作窗口（免去 XML 冗余代码）
+        windowAvatarMenu = buildAvatarMenuWindow();
+        windowAvatarSource = buildAvatarSourceWindow();
+        desktop.addView(windowAvatarMenu);
+        desktop.addView(windowAvatarSource);
+
         loadSettings();
+        loadAvatar();
 
-        String savedAvatar = prefs.getString("avatar_uri", null);
-        if (savedAvatar != null) {
-            try {
-                Uri u = Uri.parse(savedAvatar);
-                topAvatar.setImageURI(u);
-                drawerAvatar.setImageURI(u);
-            } catch (Exception ignored) {}
-        }
-
-        findViewById(R.id.btnOpenDrawer).setOnClickListener(v ->
-                drawerLayout.openDrawer(GravityCompat.START));
+        findViewById(R.id.btnOpenDrawer).setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 
         setupDrag(R.id.titleBarInbox, windowInbox);
         setupDrag(R.id.titleBarCompose, windowCompose);
@@ -114,51 +124,241 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.desktopInboxBox).setOnClickListener(v -> showFolder("📥 收件箱 - w Email", "暂无邮件", "Serv00 配置完成后，这里会显示收件列表。"));
         findViewById(R.id.desktopSendBox).setOnClickListener(v -> showWindow(windowCompose));
 
-        // 侧滑栏点击逻辑
-        findViewById(R.id.navCompose).setOnClickListener(v -> {
-            showWindow(windowCompose);
-            drawerLayout.closeDrawers();
-        });
-        findViewById(R.id.navInbox).setOnClickListener(v -> {
-            showFolder("📥 收件箱 - w Email", "暂无邮件", "暂无收到的邮件。");
-            drawerLayout.closeDrawers();
-        });
-        findViewById(R.id.navSent).setOnClickListener(v -> {
-            showFolder("📤 已发送 - w Email", "暂无已发送", "您还没有发送过邮件。");
-            drawerLayout.closeDrawers();
-        });
-        findViewById(R.id.navDraft).setOnClickListener(v -> {
-            showFolder("📝 草稿箱 - w Email", "暂无草稿", "没有保存的草稿。");
-            drawerLayout.closeDrawers();
-        });
-        findViewById(R.id.navTrash).setOnClickListener(v -> {
-            showFolder("🗑️ 垃圾邮件 - w Email", "空空如也", "垃圾箱里没有邮件。");
-            drawerLayout.closeDrawers();
-        });
-        findViewById(R.id.navMyMail).setOnClickListener(v -> {
-            String user = prefs.getString("mail_user", "dmptyly@slda.cc.cd");
-            Toast.makeText(this, "当前账号：" + user, Toast.LENGTH_LONG).show();
-            drawerLayout.closeDrawers();
-        });
-        findViewById(R.id.navSettings).setOnClickListener(v -> {
-            showWindow(windowSettings);
-            drawerLayout.closeDrawers();
-        });
-        findViewById(R.id.navAbout).setOnClickListener(v -> {
-            Toast.makeText(this, "w Email · GPLv3 · isaquxet08-ai/WEmail", Toast.LENGTH_LONG).show();
-            drawerLayout.closeDrawers();
-        });
+        findViewById(R.id.navCompose).setOnClickListener(v -> { showWindow(windowCompose); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navInbox).setOnClickListener(v -> { showFolder("📥 收件箱 - w Email", "暂无邮件", "暂无收到的邮件。"); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navSent).setOnClickListener(v -> { showFolder("📤 已发送 - w Email", "暂无已发送", "您还没有发送过邮件。"); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navDraft).setOnClickListener(v -> { showFolder("📝 草稿箱 - w Email", "暂无草稿", "没有保存的草稿。"); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navTrash).setOnClickListener(v -> { showFolder("🗑️ 垃圾邮件 - w Email", "空空如也", "垃圾箱里没有邮件。"); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navMyMail).setOnClickListener(v -> { Toast.makeText(this, "当前账号：" + prefs.getString("mail_user", "未设置"), Toast.LENGTH_LONG).show(); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navSettings).setOnClickListener(v -> { showWindow(windowSettings); drawerLayout.closeDrawers(); });
+        findViewById(R.id.navAbout).setOnClickListener(v -> { Toast.makeText(this, "w Email · GPLv3", Toast.LENGTH_LONG).show(); drawerLayout.closeDrawers(); });
 
-        View.OnClickListener avatarClick = v -> pickAvatar();
+        // 点击头像弹出菜单，而不是直接开相册
+        View.OnClickListener avatarClick = v -> showWindow(windowAvatarMenu);
         topAvatar.setOnClickListener(avatarClick);
         drawerAvatar.setOnClickListener(avatarClick);
 
         btnSavePass.setOnClickListener(v -> saveSettings());
-
-        cbSound.setOnCheckedChangeListener((b, checked) ->
-                prefs.edit().putBoolean("sound_on", checked).apply());
-
+        cbSound.setOnCheckedChangeListener((b, checked) -> prefs.edit().putBoolean("sound_on", checked).apply());
         btnSend.setOnClickListener(v -> sendMail());
+    }
+
+    // 动态构建：头像操作窗口
+    private View buildAvatarMenuWindow() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundResource(R.drawable.xp_window_bg);
+        root.setElevation(14);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(450, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.leftMargin = 120; lp.topMargin = 150;
+        root.setLayoutParams(lp);
+        root.setVisibility(View.GONE);
+
+        LinearLayout title = new LinearLayout(this);
+        title.setBackgroundResource(R.drawable.xp_title_bar);
+        title.setOrientation(LinearLayout.HORIZONTAL);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setPadding(20, 10, 10, 10);
+
+        TextView tv = new TextView(this);
+        tv.setText("👤 头像操作");
+        tv.setTextColor(Color.WHITE);
+        tv.setTextSize(14);
+        tv.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        title.addView(tv);
+
+        ImageButton btnClose = new ImageButton(this);
+        btnClose.setBackgroundResource(R.drawable.xp_close_btn);
+        btnClose.setOnClickListener(v -> root.setVisibility(View.GONE));
+        title.addView(btnClose);
+        root.addView(title);
+
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(30, 30, 30, 30);
+
+        Button btnChange = new Button(this);
+        btnChange.setText("更换头像");
+        btnChange.setBackgroundResource(R.drawable.xp_black_btn);
+        btnChange.setTextColor(Color.BLACK);
+        btnChange.setOnClickListener(v -> {
+            root.setVisibility(View.GONE);
+            showWindow(windowAvatarSource);
+        });
+        body.addView(btnChange);
+
+        Button btnView = new Button(this);
+        btnView.setText("查看头像");
+        btnView.setBackgroundResource(R.drawable.xp_black_btn);
+        btnView.setTextColor(Color.BLACK);
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnLp.topMargin = 20;
+        btnView.setLayoutParams(btnLp);
+        btnView.setOnClickListener(v -> {
+            root.setVisibility(View.GONE);
+            showAvatarPreview();
+        });
+        body.addView(btnView);
+
+        root.addView(body);
+        setupDrag(title, root);
+        return root;
+    }
+
+    // 动态构建：选择来源窗口
+    private View buildAvatarSourceWindow() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundResource(R.drawable.xp_window_bg);
+        root.setElevation(14);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(450, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.leftMargin = 160; lp.topMargin = 250;
+        root.setLayoutParams(lp);
+        root.setVisibility(View.GONE);
+
+        LinearLayout title = new LinearLayout(this);
+        title.setBackgroundResource(R.drawable.xp_title_bar);
+        title.setOrientation(LinearLayout.HORIZONTAL);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setPadding(20, 10, 10, 10);
+
+        TextView tv = new TextView(this);
+        tv.setText("📸 选择来源");
+        tv.setTextColor(Color.WHITE);
+        tv.setTextSize(14);
+        tv.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        title.addView(tv);
+
+        ImageButton btnClose = new ImageButton(this);
+        btnClose.setBackgroundResource(R.drawable.xp_close_btn);
+        btnClose.setOnClickListener(v -> root.setVisibility(View.GONE));
+        title.addView(btnClose);
+        root.addView(title);
+
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(30, 30, 30, 30);
+
+        Button btnCamera = new Button(this);
+        btnCamera.setText("通过相机");
+        btnCamera.setBackgroundResource(R.drawable.xp_black_btn);
+        btnCamera.setTextColor(Color.BLACK);
+        btnCamera.setOnClickListener(v -> {
+            root.setVisibility(View.GONE);
+            takePhoto();
+        });
+        body.addView(btnCamera);
+
+        Button btnGallery = new Button(this);
+        btnGallery.setText("通过相片库");
+        btnGallery.setBackgroundResource(R.drawable.xp_black_btn);
+        btnGallery.setTextColor(Color.BLACK);
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnLp.topMargin = 20;
+        btnGallery.setLayoutParams(btnLp);
+        btnGallery.setOnClickListener(v -> {
+            root.setVisibility(View.GONE);
+            pickAvatar();
+        });
+        body.addView(btnGallery);
+
+        root.addView(body);
+        setupDrag(title, root);
+        return root;
+    }
+
+    private void showAvatarPreview() {
+        ImageView iv = new ImageView(this);
+        iv.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        iv.setAdjustViewBounds(true);
+        iv.setPadding(20, 20, 20, 20);
+        
+        String type = prefs.getString("avatar_type", "");
+        if ("uri".equals(type) && currentAvatarUri != null) {
+            iv.setImageURI(currentAvatarUri);
+        } else if ("file".equals(type)) {
+            File f = new File(getFilesDir(), "avatar.jpg");
+            if (f.exists()) iv.setImageBitmap(BitmapFactory.decodeFile(f.getAbsolutePath()));
+            else iv.setImageResource(R.drawable.app_icon);
+        } else {
+            iv.setImageResource(R.drawable.app_icon);
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("查看当前头像")
+                .setView(iv)
+                .setPositiveButton("关闭", null)
+                .show();
+    }
+
+    private void takePhoto() {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            startActivityForResult(intent, REQ_CAMERA);
+        } catch (Exception e) {
+            Toast.makeText(this, "无法调用相机", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void pickAvatar() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQ_AVATAR);
+        } catch (Exception e) {
+            Toast.makeText(this, "无法打开相册", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void loadAvatar() {
+        String type = prefs.getString("avatar_type", "");
+        if ("uri".equals(type)) {
+            String uriStr = prefs.getString("avatar_uri", "");
+            if (!uriStr.isEmpty()) {
+                currentAvatarUri = Uri.parse(uriStr);
+                topAvatar.setImageURI(currentAvatarUri);
+                drawerAvatar.setImageURI(currentAvatarUri);
+            }
+        } else if ("file".equals(type)) {
+            File f = new File(getFilesDir(), "avatar.jpg");
+            if (f.exists()) {
+                Bitmap bmp = BitmapFactory.decodeFile(f.getAbsolutePath());
+                if (bmp != null) {
+                    topAvatar.setImageBitmap(bmp);
+                    drawerAvatar.setImageBitmap(bmp);
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_AVATAR && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            currentAvatarUri = data.getData();
+            topAvatar.setImageURI(currentAvatarUri);
+            drawerAvatar.setImageURI(currentAvatarUri);
+            try {
+                getContentResolver().takePersistableUriPermission(currentAvatarUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                prefs.edit().putString("avatar_type", "uri").putString("avatar_uri", currentAvatarUri.toString()).apply();
+            } catch (Exception ignored) {}
+        } else if (requestCode == REQ_CAMERA && resultCode == RESULT_OK && data != null) {
+            Bundle extras = data.getExtras();
+            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            if (imageBitmap != null) {
+                topAvatar.setImageBitmap(imageBitmap);
+                drawerAvatar.setImageBitmap(imageBitmap);
+                try {
+                    File f = new File(getFilesDir(), "avatar.jpg");
+                    FileOutputStream fos = new FileOutputStream(f);
+                    imageBitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+                    fos.close();
+                    prefs.edit().putString("avatar_type", "file").apply();
+                } catch (Exception e) { e.printStackTrace(); }
+            }
+        }
     }
 
     private void loadSettings() {
@@ -169,7 +369,6 @@ public class MainActivity extends AppCompatActivity {
         etImapHost.setText(prefs.getString("imap_host", "mail.slda.cc.cd"));
         etImapPort.setText(prefs.getString("imap_port", "993"));
         cbSound.setChecked(prefs.getBoolean("sound_on", true));
-        
         drawerAccount.setText(prefs.getString("mail_user", "dmptyly@slda.cc.cd"));
     }
 
@@ -182,7 +381,6 @@ public class MainActivity extends AppCompatActivity {
                 .putString("imap_host", etImapHost.getText().toString().trim())
                 .putString("imap_port", etImapPort.getText().toString().trim())
                 .apply();
-        
         drawerAccount.setText(etMailUser.getText().toString().trim());
         Toast.makeText(this, "服务器配置已保存", Toast.LENGTH_SHORT).show();
     }
@@ -195,8 +393,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupDrag(int titleBarId, final View window) {
-        final View bar = window.findViewById(titleBarId);
-        bar.setOnTouchListener(new View.OnTouchListener() {
+        setupDrag(window.findViewById(titleBarId), window);
+    }
+
+    private void setupDrag(View titleBar, final View window) {
+        titleBar.setOnTouchListener(new View.OnTouchListener() {
             final float[] down = new float[2];
             final float[] start = new float[2];
 
@@ -204,10 +405,8 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTouch(View v, MotionEvent e) {
                 switch (e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        down[0] = e.getRawX();
-                        down[1] = e.getRawY();
-                        start[0] = window.getX();
-                        start[1] = window.getY();
+                        down[0] = e.getRawX(); down[1] = e.getRawY();
+                        start[0] = window.getX(); start[1] = window.getY();
                         window.bringToFront();
                         return true;
                     case MotionEvent.ACTION_MOVE:
@@ -241,36 +440,25 @@ public class MainActivity extends AppCompatActivity {
         if (!prefs.getBoolean("sound_on", true)) return;
         try {
             MediaPlayer mp = MediaPlayer.create(this, resId);
-            if (mp != null) {
-                mp.setOnCompletionListener(MediaPlayer::release);
-                mp.start();
-            }
+            if (mp != null) { mp.setOnCompletionListener(MediaPlayer::release); mp.start(); }
         } catch (Exception ignored) {}
     }
 
     private void flyAnimation() {
         desktop.post(() -> {
-            int[] from = new int[2];
-            int[] to = new int[2];
-            int[] base = new int[2];
+            int[] from = new int[2]; int[] to = new int[2]; int[] base = new int[2];
             desktopInboxIcon.getLocationInWindow(from);
             desktopSendIcon.getLocationInWindow(to);
             desktop.getLocationInWindow(base);
 
-            float dx = to[0] - from[0];
-            float dy = to[1] - from[1];
-
             ImageView fly = new ImageView(this);
             fly.setImageResource(R.drawable.folder_icon);
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(56, 56);
-            fly.setLayoutParams(lp);
-            fly.setX(from[0] - base[0]);
-            fly.setY(from[1] - base[1]);
+            fly.setLayoutParams(new FrameLayout.LayoutParams(56, 56));
+            fly.setX(from[0] - base[0]); fly.setY(from[1] - base[1]);
             desktop.addView(fly);
 
-            TranslateAnimation anim = new TranslateAnimation(0, dx, 0, dy);
+            TranslateAnimation anim = new TranslateAnimation(0, to[0] - from[0], 0, to[1] - from[1]);
             anim.setDuration(700);
-            anim.setFillAfter(false);
             anim.setAnimationListener(new Animation.AnimationListener() {
                 @Override public void onAnimationStart(Animation a) {}
                 @Override public void onAnimationRepeat(Animation a) {}
@@ -284,20 +472,15 @@ public class MainActivity extends AppCompatActivity {
         final String to = etTo.getText().toString().trim();
         final String subject = etSubject.getText().toString().trim();
         final String body = etBody.getText().toString();
-        
         final String user = prefs.getString("mail_user", "");
         final String pass = prefs.getString("mail_pass", "");
         final String smtpHost = prefs.getString("smtp_host", "");
         final String smtpPort = prefs.getString("smtp_port", "");
 
-        if (to.isEmpty()) {
-            Toast.makeText(this, "请填写收件人", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        if (to.isEmpty()) { Toast.makeText(this, "请填写收件人", Toast.LENGTH_SHORT).show(); return; }
         if (user.isEmpty() || pass.isEmpty() || smtpHost.isEmpty() || smtpPort.isEmpty()) {
             Toast.makeText(this, "请先在设置里填写完整的服务器配置", Toast.LENGTH_SHORT).show();
-            showWindow(windowSettings);
-            return;
+            showWindow(windowSettings); return;
         }
 
         playSound(R.raw.ringout);
@@ -306,8 +489,7 @@ public class MainActivity extends AppCompatActivity {
         statusBar.setText("正在发送 → " + to);
 
         new Thread(() -> {
-            boolean ok = false;
-            String err = null;
+            boolean ok = false; String err = null;
             try {
                 Properties props = new Properties();
                 props.put("mail.smtp.host", smtpHost);
@@ -335,12 +517,9 @@ public class MainActivity extends AppCompatActivity {
 
                 Transport.send(msg);
                 ok = true;
-            } catch (Exception e) {
-                err = e.getMessage();
-            }
+            } catch (Exception e) { err = e.getMessage(); }
 
-            final boolean success = ok;
-            final String errorMsg = err;
+            final boolean success = ok; final String errorMsg = err;
             runOnUiThread(() -> {
                 btnSend.setEnabled(true);
                 String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
@@ -348,8 +527,7 @@ public class MainActivity extends AppCompatActivity {
                     playSound(R.raw.tada);
                     statusBar.setText("发送成功 · " + time);
                     Toast.makeText(this, "发送成功", Toast.LENGTH_SHORT).show();
-                    etSubject.setText("");
-                    etBody.setText("");
+                    etSubject.setText(""); etBody.setText("");
                 } else {
                     playSound(R.raw.chord);
                     statusBar.setText("发送失败：" + (errorMsg == null ? "未知错误" : errorMsg));
@@ -359,38 +537,9 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void pickAvatar() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("image/*");
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        try {
-            startActivityForResult(intent, REQ_AVATAR);
-        } catch (Exception e) {
-            Toast.makeText(this, "无法打开相册", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_AVATAR && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri uri = data.getData();
-            topAvatar.setImageURI(uri);
-            drawerAvatar.setImageURI(uri);
-            try {
-                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                prefs.edit().putString("avatar_uri", uri.toString()).apply();
-            } catch (Exception ignored) {}
-        }
-    }
-
     @Override
     public void onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawers();
-        } else {
-            super.onBackPressed();
-        }
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.closeDrawers();
+        else super.onBackPressed();
     }
 }
