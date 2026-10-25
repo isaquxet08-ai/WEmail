@@ -27,23 +27,16 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: 4. 配置 Gradle 构建工具 (指定 8.2 版本)
+    - name: 4. 配置 Gradle 构建工具
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: 8.2
+        cache-disabled: true
 
-    - name: 5. 执行编译打包 (Release版)
+    - name: 5. 执行编译打包
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      run: gradle assembleRelease
-
-    - name: 6. 自动发布到发行版 (Releases)
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v1.0.${{ github.run_number }}
-        name: WEmail 正式版 v1.0.${{ github.run_number }}
-        draft: false
-        prerelease: false
-        files: app/build/outputs/apk/release/*.apk
+      # 🚨 核心修复：加上 --stacktrace 和 --info，把所有错误全吐出来
+      run: gradle assembleRelease --stacktrace --info
