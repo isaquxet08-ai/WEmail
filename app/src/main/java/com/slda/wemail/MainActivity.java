@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
         title.addView(tv);
 
         ImageButton btnClose = new ImageButton(this);
-        btnClose.setBackgroundResource(R.drawable.xp_close_btn);
+        btnClose.setBackgroundResource(R.drawable.xp_title_bar_close);
         btnClose.setOnClickListener(v -> root.setVisibility(View.GONE));
         title.addView(btnClose);
         root.addView(title);
@@ -262,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
         title.addView(tv);
 
         ImageButton btnClose = new ImageButton(this);
-        btnClose.setBackgroundResource(R.drawable.xp_close_btn);
+        btnClose.setBackgroundResource(R.drawable.xp_title_bar_close);
         btnClose.setOnClickListener(v -> root.setVisibility(View.GONE));
         title.addView(btnClose);
         root.addView(title);
