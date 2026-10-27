@@ -93,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
 
         drawerLayout = findViewById(R.id.drawerLayout);
         desktop = findViewById(R.id.desktop);
+        windowContacts = buildContactsWindow();
+        desktop.addView(windowContacts);
 
         windowInbox = findViewById(R.id.windowInbox);
         windowSent = findViewById(R.id.windowSent);
@@ -672,6 +674,123 @@ public class MainActivity extends AppCompatActivity {
             scale.setDuration(300);
             dialBubbleView.startAnimation(scale);
         });
+    }
+
+    
+    private View buildContactsWindow() {
+        int width = (int) (300 * getResources().getDisplayMetrics().density);
+        int height = (int) (400 * getResources().getDisplayMetrics().density);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundResource(R.drawable.xp_window_bg);
+        root.setElevation(15);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(width, height);
+        lp.leftMargin = (int) (30 * getResources().getDisplayMetrics().density); 
+        lp.topMargin = (int) (50 * getResources().getDisplayMetrics().density);
+        root.setLayoutParams(lp);
+        root.setVisibility(View.GONE);
+
+        LinearLayout title = new LinearLayout(this);
+        title.setBackgroundResource(R.drawable.xp_title_bar);
+        title.setOrientation(LinearLayout.HORIZONTAL);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setPadding(15, 8, 5, 8);
+
+        TextView tvTitle = new TextView(this);
+        tvTitle.setText("📇 联系人");
+        tvTitle.setTextColor(Color.WHITE);
+        tvTitle.setTextSize(13);
+        tvTitle.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        title.addView(tvTitle);
+
+        ImageButton btnClose = new ImageButton(this);
+        btnClose.setBackgroundResource(R.drawable.my_custom_close);
+        btnClose.setOnClickListener(v -> root.setVisibility(View.GONE));
+        title.addView(btnClose);
+        root.addView(title);
+
+        LinearLayout inputArea = new LinearLayout(this);
+        inputArea.setOrientation(LinearLayout.VERTICAL);
+        inputArea.setPadding(10, 10, 10, 10);
+        
+        etContactName = new EditText(this);
+        etContactName.setHint("备注（如：张三）");
+        etContactName.setTextSize(13);
+        inputArea.addView(etContactName);
+
+        etContactEmail = new EditText(this);
+        etContactEmail.setHint("邮箱（如：test@qq.com）");
+        etContactEmail.setTextSize(13);
+        etContactEmail.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        inputArea.addView(etContactEmail);
+
+        Button btnAdd = new Button(this);
+        btnAdd.setText("保存联系人");
+        btnAdd.setOnClickListener(v -> saveContact());
+        inputArea.addView(btnAdd);
+
+        root.addView(inputArea);
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        listContacts = new LinearLayout(this);
+        listContacts.setOrientation(LinearLayout.VERTICAL);
+        listContacts.setPadding(10, 10, 10, 10);
+        scrollView.addView(listContacts);
+        root.addView(scrollView);
+
+        setupDrag(title, root);
+        return root;
+    }
+
+    private void saveContact() {
+        String name = etContactName.getText().toString().trim();
+        String email = etContactEmail.getText().toString().trim();
+        if (name.isEmpty() || email.isEmpty()) {
+            Toast.makeText(this, "备注和邮箱不能为空", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(prefs.getString("contacts", "[]"));
+            org.json.JSONObject obj = new org.json.JSONObject();
+            obj.put("name", name);
+            obj.put("email", email);
+            arr.put(obj);
+            prefs.edit().putString("contacts", arr.toString()).apply();
+            etContactName.setText("");
+            etContactEmail.setText("");
+            loadContacts();
+            Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "保存失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void loadContacts() {
+        listContacts.removeAllViews();
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray(prefs.getString("contacts", "[]"));
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject obj = arr.getJSONObject(i);
+                String name = obj.getString("name");
+                String email = obj.getString("email");
+                
+                TextView tv = new TextView(this);
+                tv.setText(name + "\n" + email);
+                tv.setTextSize(14);
+                tv.setPadding(10, 10, 10, 10);
+                tv.setOnClickListener(v -> {
+                    etTo.setText(email);
+                    windowContacts.setVisibility(View.GONE);
+                });
+                listContacts.addView(tv);
+                
+                View divider = new View(this);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+                divider.setBackgroundColor(0xFFCCCCCC);
+                listContacts.addView(divider);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void sendMail() {
