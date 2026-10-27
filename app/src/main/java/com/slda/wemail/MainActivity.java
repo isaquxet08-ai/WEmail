@@ -390,50 +390,7 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void decryptAndLoad(String password, File configFile) {
-        try {
-            byte[] encryptedBytes = new byte[(int) configFile.length()];
-            FileInputStream fis = new FileInputStream(configFile);
-            fis.read(encryptedBytes);
-            fis.close();
-
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] key = digest.digest(password.getBytes("UTF-8"));
-            SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
-
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.DECRYPT_MODE, secretKey);
-            byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
-
-            String jsonStr = new String(decryptedBytes, "UTF-8");
-            org.json.JSONObject json = new org.json.JSONObject(jsonStr);
-
-            etImapHost.setText(json.optString("imap_host"));
-            etImapUser.setText(json.optString("imap_user"));
-            etImapPass.setText(json.optString("imap_pass"));
-            etSmtpHost.setText(json.optString("smtp_host"));
-            etSmtpUser.setText(json.optString("smtp_user"));
-            etSmtpPass.setText(json.optString("smtp_pass"));
-            etMailPrefix.setText(json.optString("mail_prefix"));
-            etMailDomain.setText(json.optString("mail_domain"));
-            updateUIWithEmail();
-
-            // 保存到本地 SharedPreferences 避免下次再弹
-            prefs.edit()
-                .putString("imap_host", etImapHost.getText().toString())
-                .putString("imap_user", etImapUser.getText().toString())
-                .putString("imap_pass", etImapPass.getText().toString())
-                .putString("smtp_host", etSmtpHost.getText().toString())
-                .putString("smtp_user", etSmtpUser.getText().toString())
-                .putString("smtp_pass", etSmtpPass.getText().toString())
-                .putString("mail_prefix", etMailPrefix.getText().toString())
-                .putString("mail_domain", etMailDomain.getText().toString())
-                .apply();
-            Toast.makeText(this, "🔓 解密成功，配置已恢复！", Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "❌ 密码错误或文件损坏！", Toast.LENGTH_LONG).show();
-        }
-    }
+    
 
     private void saveSettings() {
         prefs.edit()
@@ -486,6 +443,39 @@ public class MainActivity extends AppCompatActivity {
             encryptAndSave(password);
         });
         builder.setNegativeButton("取消", null).show();
+    }
+
+    
+    private void decryptAndLoad(String password, android.net.Uri fileUri) {
+        try {
+            java.io.InputStream is = getContentResolver().openInputStream(fileUri);
+            if (is == null) return;
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) != -1) baos.write(buffer, 0, len);
+            is.close();
+            byte[] encryptedBytes = baos.toByteArray();
+
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] key = digest.digest(password.getBytes("UTF-8"));
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(key, "AES");
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding");
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKey);
+            byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+
+            org.json.JSONObject json = new org.json.JSONObject(new String(decryptedBytes, "UTF-8"));
+            etImapHost.setText(json.optString("imap_host")); etImapUser.setText(json.optString("imap_user")); etImapPass.setText(json.optString("imap_pass"));
+            etSmtpHost.setText(json.optString("smtp_host")); etSmtpUser.setText(json.optString("smtp_user")); etSmtpPass.setText(json.optString("smtp_pass"));
+            etMailPrefix.setText(json.optString("mail_prefix")); etMailDomain.setText(json.optString("mail_domain"));
+            updateUIWithEmail();
+            prefs.edit().putString("imap_host", etImapHost.getText().toString()).putString("imap_user", etImapUser.getText().toString()).putString("imap_pass", etImapPass.getText().toString())
+                 .putString("smtp_host", etSmtpHost.getText().toString()).putString("smtp_user", etSmtpUser.getText().toString()).putString("smtp_pass", etSmtpPass.getText().toString())
+                 .putString("mail_prefix", etMailPrefix.getText().toString()).putString("mail_domain", etMailDomain.getText().toString()).apply();
+            Toast.makeText(this, "🔓 解密成功！", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "❌ 密码错误或文件损坏！", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void encryptAndSave(String password) {
