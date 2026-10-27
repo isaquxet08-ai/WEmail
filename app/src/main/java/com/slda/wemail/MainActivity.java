@@ -433,8 +433,7 @@ public class MainActivity extends AppCompatActivity {
                         String subject = msg.getSubject() != null ? msg.getSubject() : "(无主题)";
                         Date date = msg.getSentDate() != null ? msg.getSentDate() : new Date();
                         String time = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(date);
-                        mailList.add(from + "
-" + subject + "  (" + time + ")");
+                        mailList.add(from + System.lineSeparator() + subject + "  (" + time + ")");
                     }
                     targetFolder.close(false);
                 }
@@ -447,8 +446,7 @@ public class MainActivity extends AppCompatActivity {
             final List<String> finalList = mailList;
             runOnUiThread(() -> {
                 if (err != null) {
-                    if (emptyView != null) emptyView.setText("拉取失败:
-" + err);
+                    if (emptyView != null) emptyView.setText("拉取失败: " + err);
                     Toast.makeText(this, "失败: " + err, Toast.LENGTH_LONG).show();
                 } else if (finalList.isEmpty()) {
                     if (emptyView != null) emptyView.setText("此文件夹为空");
