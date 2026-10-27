@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
     
     private Button btnSend, btnSavePass;
     private SharedPreferences prefs;
+    private MediaPlayer dialPlayer;
     private Uri currentAvatarUri;
 
     @Override
@@ -654,6 +655,37 @@ public class MainActivity extends AppCompatActivity {
             if (mp != null) { mp.setOnCompletionListener(MediaPlayer::release); mp.start(); }
         } catch (Exception ignored) {}
     }
+    private void startDialSound() {
+        if (!prefs.getBoolean("sound_on", true)) return;
+        stopDialSound(); 
+        try {
+            dialPlayer = new MediaPlayer();
+            android.content.res.AssetFileDescriptor afd = getResources().openRawResourceFd(R.raw.ringout);
+            if (afd == null) return;
+            dialPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+            afd.close();
+            dialPlayer.setLooping(true); 
+            dialPlayer.prepare();
+            dialPlayer.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopDialSound() {
+        if (dialPlayer != null) {
+            try {
+                if (dialPlayer.isPlaying()) {
+                    dialPlayer.stop();
+                }
+            } catch (Exception ignored) {}
+            try {
+                dialPlayer.release();
+            } catch (Exception ignored) {}
+            dialPlayer = null;
+        }
+    }
+
     private void flyAnimation() {
         desktop.post(() -> {
             int[] from = new int[2]; int[] to = new int[2]; int[] base = new int[2];
