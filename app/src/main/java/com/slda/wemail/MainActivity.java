@@ -559,6 +559,8 @@ public class MainActivity extends AppCompatActivity {
     
     
     
+    
+    
     private void fetchServerEmails(String targetFolderType, String cacheKey, LinearLayout listContainer, TextView emptyView) {
         final String imapHost = prefs.getString("imap_host", "");
         final String imapPort = prefs.getString("imap_port", "");
@@ -570,7 +572,6 @@ public class MainActivity extends AppCompatActivity {
 
         if (imapHost.isEmpty() || imapUser.isEmpty() || imapPass.isEmpty()) {
             if (emptyView != null) emptyView.setText("请先在设置中填写收件服务器配置");
-            Toast.makeText(this, "配置为空", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -581,7 +582,7 @@ public class MainActivity extends AppCompatActivity {
         listContainer.removeAllViews();
 
         new Thread(() -> {
-            List<String> mailList = new ArrayList<>();
+            List<String[]> mailData = new ArrayList<>();
             String error = null;
             try {
                 Properties props = new Properties();
@@ -615,11 +616,37 @@ public class MainActivity extends AppCompatActivity {
                     int start = Math.max(0, messages.length - 10);
                     for (int i = messages.length - 1; i >= start; i--) {
                         Message msg = messages[i];
-                        String from = msg.getFrom() != null && msg.getFrom().length > 0 ? msg.getFrom()[0].toString() : "未知";
-                        String subject = msg.getSubject() != null ? msg.getSubject() : "(无主题)";
+                        String from = "未知";
+                        try {
+                            if (msg.getFrom() != null && msg.getFrom().length > 0) {
+                                from = MimeUtility.decodeText(msg.getFrom()[0].toString());
+                            }
+                        } catch (Exception ignored) {}
+                        
+                        String subject = "(无主题)";
+                        try {
+                            if (msg.getSubject() != null) {
+                                subject = MimeUtility.decodeText(msg.getSubject());
+                            }
+                        } catch (Exception ignored) {}
+
                         Date date = msg.getSentDate() != null ? msg.getSentDate() : new Date();
                         String time = new SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(date);
-                        mailList.add(from + System.lineSeparator() + subject + "  (" + time + ")");
+                        
+                        String body = "";
+                        try {
+                            Object content = msg.getContent();
+                            if (content instanceof String) {
+                                body = (String) content;
+                            } else {
+                                body = "该邮件包含多媒体内容，请用专业客户端查看。";
+                            }
+                        } catch (Exception e) {
+                            body = "无法解析正文内容。";
+                        }
+
+                        // 保存：发件人、主题、时间、正文
+                        mailData.add(new String[]{from, subject, time, body});
                     }
                     targetFolder.close(false);
                 }
@@ -629,25 +656,32 @@ public class MainActivity extends AppCompatActivity {
             }
 
             final String err = error;
-            final List<String> finalList = mailList;
+            final List<String[]> finalList = mailData;
             runOnUiThread(() -> {
                 if (err != null) {
                     if (emptyView != null) emptyView.setText("拉取失败: " + err);
                     Toast.makeText(this, "失败: " + err, Toast.LENGTH_LONG).show();
                 } else if (finalList.isEmpty()) {
                     if (emptyView != null) emptyView.setText("此文件夹为空");
-                    Toast.makeText(this, "拉取成功，但文件夹为空", Toast.LENGTH_SHORT).show();
-                    if (targetFolderType.equals("TRASH")) ivTrashNav.setImageResource(R.drawable.trash_empty_icon);
                 } else {
                     if (emptyView != null) emptyView.setVisibility(View.GONE);
                     Toast.makeText(this, "成功拉取 " + finalList.size() + " 封邮件", Toast.LENGTH_SHORT).show();
-                    if (targetFolderType.equals("TRASH")) ivTrashNav.setImageResource(R.drawable.trash_full_icon);
                     
-                    for (String mailStr : finalList) {
+                    for (String[] mail : finalList) {
+                        String from = mail[0];
+                        String subject = mail[1];
+                        String time = mail[2];
+                        String body = mail[3];
+                        
                         TextView tv = new TextView(this);
-                        tv.setText(mailStr);
+                        // 这里解决乱码：如果系统没解出来，咱们在 UI 层再兜底一次
+                        tv.setText(from + System.lineSeparator() + subject + "  (" + time + ")");
                         tv.setTextSize(13);
                         tv.setPadding(10, 10, 10, 10);
+                        
+                        // 核心：点击列表弹出【独立】的详情窗口
+                        tv.setOnClickListener(v -> showDynamicMailWindow(subject, from, time, body));
+                        
                         listContainer.addView(tv);
                         
                         View divider = new View(this);
@@ -659,249 +693,84 @@ public class MainActivity extends AppCompatActivity {
             });
         }).start();
     }
-    
-    
-    
 
-    
-    private void stopDialSound() {
-        if (dialBubbleView != null) {
-            desktop.removeView(dialBubbleView);
-            dialBubbleView = null;
-        }
-        if (dialPlayer != null) {
-            try {
-                if (dialPlayer.isPlaying()) dialPlayer.stop();
-                dialPlayer.release();
-            } catch (Exception ignored) {}
-            dialPlayer = null;
-        }
-    }
-
-    private void showDialBubble() {
-        desktop.post(() -> {
-            if (dialBubbleView != null) {
-                desktop.removeView(dialBubbleView);
-            }
-
-            int[] to = new int[2];
-            int[] base = new int[2];
-            desktopSendIcon.getLocationInWindow(to);
-            desktop.getLocationInWindow(base);
-
-            dialBubbleView = new LinearLayout(this);
-            dialBubbleView.setOrientation(LinearLayout.VERTICAL);
-            dialBubbleView.setGravity(android.view.Gravity.CENTER);
-            
-            // 用一张白底的背景，让绿色进度条更明显
-            android.graphics.drawable.GradientDrawable panelBg = new android.graphics.drawable.GradientDrawable();
-            panelBg.setColor(0xFFFFFFFF);
-            panelBg.setCornerRadius(8);
-            panelBg.setStroke(2, 0xFF0000FF);
-            dialBubbleView.setBackground(panelBg);
-            dialBubbleView.setPadding(16, 16, 16, 16);
-
-            ImageView bubble = new ImageView(this);
-            // 这里用系统原生的电话图标，绝对能找到
-            bubble.setImageResource(android.R.drawable.sym_action_call);
-            LinearLayout.LayoutParams bubbleLp = new LinearLayout.LayoutParams(64, 64);
-            bubbleLp.gravity = android.view.Gravity.CENTER;
-            bubble.setLayoutParams(bubbleLp);
-            dialBubbleView.addView(bubble);
-
-            android.widget.ProgressBar progressBar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-            progressBar.setIndeterminate(true); 
-            
-            android.graphics.drawable.GradientDrawable bgShape = new android.graphics.drawable.GradientDrawable();
-            bgShape.setColor(0xFF000000); 
-            bgShape.setCornerRadius(2);
-            
-            android.graphics.drawable.GradientDrawable progressShape = new android.graphics.drawable.GradientDrawable();
-            progressShape.setColor(0xFF00FF00); 
-            progressShape.setCornerRadius(2);
-            
-            android.graphics.drawable.ClipDrawable clipDrawable = new android.graphics.drawable.ClipDrawable(progressShape, android.view.Gravity.LEFT, android.graphics.drawable.ClipDrawable.HORIZONTAL);
-            android.graphics.drawable.LayerDrawable layerDrawable = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{bgShape, clipDrawable});
-            
-            progressBar.setProgressDrawable(layerDrawable);
-            
-            LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(120, 12);
-            progressLp.topMargin = 10;
-            progressLp.gravity = android.view.Gravity.CENTER;
-            progressBar.setLayoutParams(progressLp);
-            dialBubbleView.addView(progressBar);
-
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-            dialBubbleView.setLayoutParams(lp);
-            dialBubbleView.setX(to[0] - base[0] - 20);
-            dialBubbleView.setY(to[1] - base[1] - 100);
-
-            desktop.addView(dialBubbleView);
-
-            android.view.animation.ScaleAnimation scale = new android.view.animation.ScaleAnimation(
-                    0f, 1f, 0f, 1f,
-                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
-                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
-            );
-            scale.setDuration(300);
-            dialBubbleView.startAnimation(scale);
-        });
-    }
-
-    
-    
-
-    
-
-    
-
-    
-    private View buildContactsWindow() {
+    // 核心：动态生成独立的邮件详情窗口
+    private void showDynamicMailWindow(String subject, String from, String time, String body) {
         int width = (int) (300 * getResources().getDisplayMetrics().density);
         int height = (int) (400 * getResources().getDisplayMetrics().density);
+        
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundResource(R.drawable.xp_window_bg);
-        root.setElevation(15);
+        root.setElevation(20f + desktop.getChildCount()); // 每次新建窗口层级更高
+        
+        // 随机偏移一点点，防止完全重叠
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(width, height);
-        lp.leftMargin = (int) (30 * getResources().getDisplayMetrics().density); 
-        lp.topMargin = (int) (50 * getResources().getDisplayMetrics().density);
+        lp.leftMargin = (int) (20 * getResources().getDisplayMetrics().density) + (desktop.getChildCount() % 5) * 15;
+        lp.topMargin = (int) (60 * getResources().getDisplayMetrics().density) + (desktop.getChildCount() % 5) * 15;
         root.setLayoutParams(lp);
-        root.setVisibility(View.GONE);
 
-        LinearLayout title = new LinearLayout(this);
-        title.setBackgroundResource(R.drawable.xp_title_bar);
-        title.setOrientation(LinearLayout.HORIZONTAL);
-        title.setGravity(Gravity.CENTER_VERTICAL);
-        title.setPadding(15, 8, 5, 8);
+        // 动态创建标题栏
+        LinearLayout titleBar = new LinearLayout(this);
+        titleBar.setBackgroundResource(R.drawable.xp_title_bar);
+        titleBar.setOrientation(LinearLayout.HORIZONTAL);
+        titleBar.setGravity(Gravity.CENTER_VERTICAL);
+        titleBar.setPadding((int)(15 * getResources().getDisplayMetrics().density), 8, 5, 8);
 
         TextView tvTitle = new TextView(this);
-        tvTitle.setText("📇 联系人");
+        tvTitle.setText(subject); // 边框名字就是邮件主题
         tvTitle.setTextColor(Color.WHITE);
         tvTitle.setTextSize(13);
+        tvTitle.setSingleLine(true);
+        tvTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
         tvTitle.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        title.addView(tvTitle);
+        titleBar.addView(tvTitle);
 
         ImageButton btnClose = new ImageButton(this);
-        btnClose.setBackgroundResource(R.drawable.xp_close_btn);
-        btnClose.setOnClickListener(v -> root.setVisibility(View.GONE));
-        title.addView(btnClose);
-        root.addView(title);
+        btnClose.setBackgroundResource(R.drawable.xp_title_bar_close); // 你的 XP 原版关闭按钮
+        btnClose.setOnClickListener(v -> desktop.removeView(root));
+        titleBar.addView(btnClose);
+        root.addView(titleBar);
 
-        LinearLayout inputArea = new LinearLayout(this);
-        inputArea.setOrientation(LinearLayout.VERTICAL);
-        inputArea.setPadding(10, 10, 10, 10);
-        
-        etContactName = new EditText(this);
-        etContactName.setHint("备注（如：张三）");
-        etContactName.setTextSize(13);
-        inputArea.addView(etContactName);
+        // 动态创建内容区
+        LinearLayout contentBox = new LinearLayout(this);
+        contentBox.setOrientation(LinearLayout.VERTICAL);
+        contentBox.setPadding(15, 15, 15, 15);
+        contentBox.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        etContactEmail = new EditText(this);
-        etContactEmail.setHint("邮箱（如：test@qq.com）");
-        etContactEmail.setTextSize(13);
-        etContactEmail.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
-        inputArea.addView(etContactEmail);
+        TextView tvFrom = new TextView(this);
+        tvFrom.setText("发件人: " + from);
+        tvFrom.setTextSize(13);
+        tvFrom.setTextColor(Color.BLACK);
+        contentBox.addView(tvFrom);
 
-        Button btnAdd = new Button(this);
-        btnAdd.setText("保存联系人");
-        btnAdd.setOnClickListener(v -> saveContact());
-        inputArea.addView(btnAdd);
-
-        root.addView(inputArea);
+        TextView tvTime = new TextView(this);
+        tvTime.setText("时间: " + time);
+        tvTime.setTextSize(12);
+        tvTime.setTextColor(Color.GRAY);
+        tvTime.setPadding(0, 5, 0, 15);
+        contentBox.addView(tvTime);
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        listContacts = new LinearLayout(this);
-        listContacts.setOrientation(LinearLayout.VERTICAL);
-        listContacts.setPadding(10, 10, 10, 10);
-        scrollView.addView(listContacts);
-        root.addView(scrollView);
-
-        setupDrag(title, root);
-        return root;
-    }
-
-    private void saveContact() {
-        String name = etContactName.getText().toString().trim();
-        String email = etContactEmail.getText().toString().trim();
-        if (name.isEmpty() || email.isEmpty()) {
-            Toast.makeText(this, "备注和邮箱不能为空", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try {
-            org.json.JSONArray arr = new org.json.JSONArray(prefs.getString("contacts", "[]"));
-            org.json.JSONObject obj = new org.json.JSONObject();
-            obj.put("name", name);
-            obj.put("email", email);
-            arr.put(obj);
-            prefs.edit().putString("contacts", arr.toString()).apply();
-            etContactName.setText("");
-            etContactEmail.setText("");
-            loadContacts();
-            Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "保存失败", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void loadContacts() {
-        listContacts.removeAllViews();
-        try {
-            org.json.JSONArray arr = new org.json.JSONArray(prefs.getString("contacts", "[]"));
-            for (int i = 0; i < arr.length(); i++) {
-                org.json.JSONObject obj = arr.getJSONObject(i);
-                String name = obj.getString("name");
-                String email = obj.getString("email");
-                
-                TextView tv = new TextView(this);
-                tv.setText(name + "\n" + email);
-                tv.setTextSize(14);
-                tv.setPadding(10, 10, 10, 10);
-                tv.setOnClickListener(v -> {
-                    etTo.setText(email);
-                    windowContacts.setVisibility(View.GONE);
-                });
-                listContacts.addView(tv);
-                
-                View divider = new View(this);
-                divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
-                divider.setBackgroundColor(0xFFCCCCCC);
-                listContacts.addView(divider);
-            }
-        } catch (Exception ignored) {}
-    }
-
-    
-    
-
-    
-    
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 1024) {
-            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "✅ 存储权限已获取", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "❌ 拒绝权限将无法保存配置文件", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    
-    private void requestStoragePermission() {
-        // 采用 SAF 架构后，传统的存储权限申请仅作为低版本保底
-        if (android.os.Build.VERSION.SDK_INT >= 23 && android.os.Build.VERSION.SDK_INT <= 28) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{
-                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        android.Manifest.permission.READ_EXTERNAL_STORAGE
-                }, 1024);
-            }
-        }
+        TextView tvBody = new TextView(this);
+        tvBody.setText(body);
+        tvBody.setTextSize(14);
+        tvBody.setTextColor(Color.BLACK);
+        scrollView.addView(tvBody);
+        contentBox.addView(scrollView);
+        
+        root.addView(contentBox);
+        
+        // 绑定拖拽逻辑并添加到桌面
+        setupDrag(titleBar, root);
+        desktop.addView(root);
+        
+        // 弹出动画
+        android.view.animation.ScaleAnimation scale = new android.view.animation.ScaleAnimation(
+                0.8f, 1f, 0.8f, 1f, android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f, android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f);
+        scale.setDuration(200);
+        root.startAnimation(scale);
     }
 
     private void sendMail() {
@@ -963,6 +832,7 @@ public class MainActivity extends AppCompatActivity {
 
             final boolean success = ok; final String errorMsg = err;
             runOnUiThread(() -> {
+                stopDialSound(); // 终极强杀：只要出结果，立刻关气泡和声音
                 btnSend.setEnabled(true);
                 String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
                 if (success) {
