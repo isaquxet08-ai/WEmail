@@ -24,6 +24,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
 import java.security.MessageDigest;
@@ -719,6 +720,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     
+    
+
+    
+
+    
+
+    
     private View buildContactsWindow() {
         int width = (int) (300 * getResources().getDisplayMetrics().density);
         int height = (int) (400 * getResources().getDisplayMetrics().density);
@@ -746,7 +754,7 @@ public class MainActivity extends AppCompatActivity {
         title.addView(tvTitle);
 
         ImageButton btnClose = new ImageButton(this);
-        btnClose.setBackgroundResource(R.drawable.my_custom_close);
+        btnClose.setBackgroundResource(R.drawable.xp_close_btn);
         btnClose.setOnClickListener(v -> root.setVisibility(View.GONE));
         title.addView(btnClose);
         root.addView(title);
@@ -763,7 +771,7 @@ public class MainActivity extends AppCompatActivity {
         etContactEmail = new EditText(this);
         etContactEmail.setHint("邮箱（如：test@qq.com）");
         etContactEmail.setTextSize(13);
-        etContactEmail.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        etContactEmail.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         inputArea.addView(etContactEmail);
 
         Button btnAdd = new Button(this);
