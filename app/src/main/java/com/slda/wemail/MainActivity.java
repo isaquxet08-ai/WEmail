@@ -859,9 +859,27 @@ public class MainActivity extends AppCompatActivity {
 
     
     private void requestStoragePermission() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            // Android 11+ 机制：强制跳转授权页面
+            if (!android.os.Environment.isExternalStorageManager()) {
+                new android.app.AlertDialog.Builder(this)
+                    .setTitle("获取核心权限")
+                    .setMessage("为了在根目录创建配置文件，请点击确定，并在接下来弹出的页面中找到【w Email】并允许【所有文件访问权限】！")
+                    .setPositiveButton("去开启", (d, w) -> {
+                        try {
+                            android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                            intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            startActivity(new android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                        }
+                    })
+                    .setCancelable(false)
+                    .show();
+            }
+        } else if (android.os.Build.VERSION.SDK_INT >= 23) {
+            // Android 6-10 机制
             if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                // 核心：调用系统 API 触发弹窗
                 requestPermissions(new String[]{
                         android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         android.Manifest.permission.READ_EXTERNAL_STORAGE
