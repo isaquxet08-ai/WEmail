@@ -372,6 +372,7 @@ public class MainActivity extends AppCompatActivity {
 
     
     
+    
     private void fetchServerEmails(String targetFolderType, String cacheKey, LinearLayout listContainer, TextView emptyView) {
         final String imapHost = prefs.getString("imap_host", "");
         final String imapPort = prefs.getString("imap_port", "");
@@ -379,8 +380,11 @@ public class MainActivity extends AppCompatActivity {
         final String imapPass = prefs.getString("imap_pass", "");
         final boolean imapSsl = prefs.getBoolean("imap_ssl", true);
 
+        Toast.makeText(this, "开始连接服务器...", Toast.LENGTH_SHORT).show();
+
         if (imapHost.isEmpty() || imapUser.isEmpty() || imapPass.isEmpty()) {
             if (emptyView != null) emptyView.setText("请先在设置中填写收件服务器配置");
+            Toast.makeText(this, "配置为空", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -396,11 +400,14 @@ public class MainActivity extends AppCompatActivity {
             try {
                 Properties props = new Properties();
                 props.setProperty("mail.store.protocol", imapSsl ? "imaps" : "imap");
+                props.put("mail.imaps.ssl.trust", "*");
+                props.put("mail.imaps.connectiontimeout", "10000");
+                props.put("mail.imaps.timeout", "10000");
+
                 Session session = Session.getInstance(props, null);
                 Store store = session.getStore();
                 store.connect(imapHost, Integer.parseInt(imapPort), imapUser, imapPass);
                 
-                // 自动匹配不同邮箱服务器的文件夹名
                 Folder targetFolder = null;
                 if (targetFolderType.equals("INBOX")) {
                     targetFolder = store.getFolder("INBOX");
@@ -415,7 +422,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (targetFolder == null) {
-                    error = "服务器上找不到该文件夹";
+                    error = "找不到文件夹: " + targetFolderType;
                 } else {
                     targetFolder.open(Folder.READ_ONLY);
                     Message[] messages = targetFolder.getMessages();
@@ -433,35 +440,25 @@ public class MainActivity extends AppCompatActivity {
                 }
                 store.close();
             } catch (Exception e) {
-                error = e.getMessage();
+                error = e.getClass().getSimpleName() + ": " + e.getMessage();
             }
 
             final String err = error;
             final List<String> finalList = mailList;
             runOnUiThread(() -> {
                 if (err != null) {
-                    if (emptyView != null) {
-                        emptyView.setText("拉取失败：" + err);
-                        emptyView.setVisibility(View.VISIBLE);
-                    } else {
-                        Toast.makeText(this, "拉取失败：" + err, Toast.LENGTH_SHORT).show();
-                    }
+                    if (emptyView != null) emptyView.setText("拉取失败:
+" + err);
+                    Toast.makeText(this, "失败: " + err, Toast.LENGTH_LONG).show();
                 } else if (finalList.isEmpty()) {
-                    if (emptyView != null) {
-                        emptyView.setText("此文件夹为空");
-                        emptyView.setVisibility(View.VISIBLE);
-                    }
+                    if (emptyView != null) emptyView.setText("此文件夹为空");
+                    Toast.makeText(this, "拉取成功，但文件夹为空", Toast.LENGTH_SHORT).show();
+                    if (targetFolderType.equals("TRASH")) ivTrashNav.setImageResource(R.drawable.trash_empty_icon);
                 } else {
                     if (emptyView != null) emptyView.setVisibility(View.GONE);
-
-                if (targetFolderType.equals("TRASH")) {
-                    if (finalList.isEmpty()) {
-                        ivTrashNav.setImageResource(R.drawable.trash_empty_icon);
-                    } else {
-                        ivTrashNav.setImageResource(R.drawable.trash_full_icon);
-                    }
-                }
-
+                    Toast.makeText(this, "成功拉取 " + finalList.size() + " 封邮件", Toast.LENGTH_SHORT).show();
+                    if (targetFolderType.equals("TRASH")) ivTrashNav.setImageResource(R.drawable.trash_full_icon);
+                    
                     for (String mailStr : finalList) {
                         TextView tv = new TextView(this);
                         tv.setText(mailStr);
@@ -478,7 +475,7 @@ public class MainActivity extends AppCompatActivity {
             });
         }).start();
     }
-
+    
     private void sendMail() {
         final String to = etTo.getText().toString().trim();
         final String subject = etSubject.getText().toString().trim();
