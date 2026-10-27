@@ -202,6 +202,7 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.closeDrawers();
         });
         btnSavePass.setOnClickListener(v -> saveSettings());
+        requestStoragePermission();
         btnSend.setOnClickListener(v -> sendMail());
         loadEmails();
         loadEmails();
@@ -474,7 +475,13 @@ public class MainActivity extends AppCompatActivity {
             byte[] encryptedBytes = cipher.doFinal(json.toString().getBytes("UTF-8"));
 
             File dir = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "WEmail");
-            if (!dir.exists()) dir.mkdirs();
+            if (!dir.exists()) {
+                boolean created = dir.mkdirs();
+                if (!created) {
+                    Toast.makeText(this, "❌ 目录创建失败！请去系统设置中手动给 w Email 开启【存储/所有文件访问】权限！", Toast.LENGTH_LONG).show();
+                    return;
+                }
+            }
             File configFile = new File(dir, "config.enc");
             
             FileOutputStream fos = new FileOutputStream(configFile);
@@ -845,6 +852,31 @@ public class MainActivity extends AppCompatActivity {
                 listContacts.addView(divider);
             }
         } catch (Exception ignored) {}
+    }
+
+    
+    private void requestStoragePermission() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            // Android 11+ 需要全文件访问权限才能随便写 Download 目录
+            if (!android.os.Environment.isExternalStorageManager()) {
+                try {
+                    android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                    intent.addCategory("android.intent.category.DEFAULT");
+                    intent.setData(android.net.Uri.parse(String.format("package:%s", getPackageName())));
+                    startActivityForResult(intent, 2296);
+                } catch (Exception e) {
+                    android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                    startActivityForResult(intent, 2296);
+                }
+            }
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{
+                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        android.Manifest.permission.READ_EXTERNAL_STORAGE
+                }, 100);
+            }
+        }
     }
 
     private void sendMail() {
