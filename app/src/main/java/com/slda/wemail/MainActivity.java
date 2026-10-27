@@ -490,7 +490,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setNegativeButton("取消", null).show();
     }
 
-    (String password) {
+    private void encryptAndSave(String password) {
         try {
             org.json.JSONObject json = new org.json.JSONObject();
             json.put("imap_host", etImapHost.getText().toString().trim()); json.put("imap_user", etImapUser.getText().toString().trim()); json.put("imap_pass", etImapPass.getText().toString());
