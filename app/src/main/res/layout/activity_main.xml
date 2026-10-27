@@ -22,7 +22,7 @@
                     </LinearLayout>
                     <Space android:layout_width="56dp" android:layout_height="1dp" />
                     <LinearLayout android:id="@+id/desktopSendBox" android:layout_width="wrap_content" android:layout_height="wrap_content" android:clickable="true" android:focusable="true" android:gravity="center" android:orientation="vertical" android:padding="6dp">
-                        <ImageView android:id="@+id/desktopSendIcon" android:layout_width="56dp" android:layout_height="56dp" android:src="@drawable/folder_icon" />
+                        <ImageView android:id="@+id/desktopSendIcon" android:layout_width="56dp" android:layout_height="56dp" android:src="@drawable/send_icon" />
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="发件箱" android:textColor="#FFFFFF" android:textSize="12sp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -58,7 +58,7 @@
                 </LinearLayout>
                 <LinearLayout android:id="@+id/windowTrash" android:layout_width="300dp" android:layout_height="400dp" android:layout_marginStart="80dp" android:layout_marginTop="80dp" android:background="@drawable/xp_window_bg" android:elevation="12dp" android:orientation="vertical" android:visibility="gone">
                     <LinearLayout android:id="@+id/titleBarTrash" android:layout_width="match_parent" android:layout_height="34dp" android:background="@drawable/xp_title_bar" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="8dp" android:paddingEnd="4dp">
-                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="🗑️ 垃圾邮件" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:drawableStart="@drawable/trash_full_icon" android:drawablePadding="8dp" android:text=" 垃圾邮件" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
                         <ImageButton android:id="@+id/btnCloseTrash" android:layout_width="24dp" android:layout_height="24dp" android:background="@drawable/xp_close_btn" />
                     </LinearLayout>
                     <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="10dp">
@@ -134,7 +134,7 @@
         <TextView android:id="@+id/navInbox" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="📥   收件箱" android:textSize="15sp" />
         <TextView android:id="@+id/navSent" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="📤   已发送" android:textSize="15sp" />
         <TextView android:id="@+id/navDraft" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="📝   草稿箱" android:textSize="15sp" />
-        <TextView android:id="@+id/navTrash" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="🗑️   垃圾邮件" android:textSize="15sp" />
+        <LinearLayout android:id="@+id/navTrash" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true"><ImageView android:id="@+id/ivTrashNav" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/trash_empty_icon" /><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:text="垃圾邮件" android:textSize="15sp" /></LinearLayout>
         <TextView android:id="@+id/navMyMail" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="📮   未设置域名" android:textSize="15sp" />
         <TextView android:id="@+id/navSettings" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:paddingStart="20dp" android:clickable="true" android:focusable="true" android:text="⚙️   服务器设置" android:textSize="15sp" />
         <Space android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />

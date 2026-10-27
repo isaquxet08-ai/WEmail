@@ -56,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private View windowSettings, windowAvatarMenu, windowAvatarSource;
     private ImageView desktopInboxIcon, desktopSendIcon, topAvatar, drawerAvatar;
     private TextView statusBar, drawerAccount, navMyMail;
+    private ImageView ivTrashNav;
     private LinearLayout listInbox, listSent, listDraft, listTrash;
     private TextView tvInboxEmpty;
     
@@ -91,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
         statusBar = findViewById(R.id.statusBar);
         drawerAccount = findViewById(R.id.drawerAccount);
         navMyMail = findViewById(R.id.navMyMail);
+        ivTrashNav = findViewById(R.id.ivTrashNav);
         listInbox = findViewById(R.id.listInbox);
         listSent = findViewById(R.id.listSent);
         listDraft = findViewById(R.id.listDraft);
@@ -451,6 +453,15 @@ public class MainActivity extends AppCompatActivity {
                     }
                 } else {
                     if (emptyView != null) emptyView.setVisibility(View.GONE);
+
+                if (targetFolderType.equals("TRASH")) {
+                    if (finalList.isEmpty()) {
+                        ivTrashNav.setImageResource(R.drawable.trash_empty_icon);
+                    } else {
+                        ivTrashNav.setImageResource(R.drawable.trash_full_icon);
+                    }
+                }
+
                     for (String mailStr : finalList) {
                         TextView tv = new TextView(this);
                         tv.setText(mailStr);
