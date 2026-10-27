@@ -870,6 +870,19 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    
+    private void requestStoragePermission() {
+        // 采用 SAF 架构后，传统的存储权限申请仅作为低版本保底
+        if (android.os.Build.VERSION.SDK_INT >= 23 && android.os.Build.VERSION.SDK_INT <= 28) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{
+                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        android.Manifest.permission.READ_EXTERNAL_STORAGE
+                }, 1024);
+            }
+        }
+    }
+
     private void sendMail() {
         final String to = etTo.getText().toString().trim();
         final String subject = etSubject.getText().toString().trim();
