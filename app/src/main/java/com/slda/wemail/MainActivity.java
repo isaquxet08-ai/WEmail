@@ -344,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 如果本地为空（重装后），检查公共目录是否有加密文件，有则弹窗要求输入密码
         if (etImapUser.getText().toString().isEmpty()) {
-            File configFile = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS), "WEmail/config.enc");
+            File configFile = new File(android.os.Environment.getExternalStorageDirectory(), "WEmail/config.enc");
             if (configFile.exists()) {
                 showMasterPasswordDialog(configFile);
             }
@@ -474,7 +474,7 @@ public class MainActivity extends AppCompatActivity {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             byte[] encryptedBytes = cipher.doFinal(json.toString().getBytes("UTF-8"));
 
-            File dir = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS), "WEmail");
+            File dir = new File(android.os.Environment.getExternalStorageDirectory(), "WEmail");
             if (!dir.exists()) {
                 boolean created = dir.mkdirs();
                 if (!created) {
@@ -860,11 +860,11 @@ public class MainActivity extends AppCompatActivity {
     
     private void requestStoragePermission() {
         if (android.os.Build.VERSION.SDK_INT >= 30) {
-            // Android 11+ 机制：强制跳转授权页面
+            // Android 11+ (华为等)：直接要最高权限
             if (!android.os.Environment.isExternalStorageManager()) {
                 new android.app.AlertDialog.Builder(this)
                     .setTitle("获取核心权限")
-                    .setMessage("为了在根目录创建配置文件，请点击确定，并在接下来弹出的页面中找到【w Email】并允许【所有文件访问权限】！")
+                    .setMessage("为了在根目录保存配置文件，请在接下来的页面中允许【所有文件访问权限】！")
                     .setPositiveButton("去开启", (d, w) -> {
                         try {
                             android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
@@ -878,7 +878,7 @@ public class MainActivity extends AppCompatActivity {
                     .show();
             }
         } else if (android.os.Build.VERSION.SDK_INT >= 23) {
-            // Android 6-10 机制
+            // Android 6-10 (你的 vivo)：申请标准存储权限
             if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{
                         android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
