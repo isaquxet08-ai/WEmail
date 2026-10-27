@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private View windowInbox, windowSent, windowDraft, windowTrash, windowCompose;
     private View windowSettings, windowAvatarMenu, windowAvatarSource;
     private ImageView desktopInboxIcon, desktopSendIcon, topAvatar, drawerAvatar;
+    private LinearLayout dialBubbleView;
     private TextView statusBar, drawerAccount, navMyMail;
     private ImageView ivTrashNav;
     private LinearLayout listInbox, listSent, listDraft, listTrash;
@@ -475,6 +476,92 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
     
+    
+    private void stopDialSound() {
+        if (dialBubbleView != null) {
+            desktop.removeView(dialBubbleView);
+            dialBubbleView = null;
+        }
+        if (dialPlayer != null) {
+            try {
+                if (dialPlayer.isPlaying()) dialPlayer.stop();
+                dialPlayer.release();
+            } catch (Exception ignored) {}
+            dialPlayer = null;
+        }
+    }
+
+    private void showDialBubble() {
+        desktop.post(() -> {
+            if (dialBubbleView != null) {
+                desktop.removeView(dialBubbleView);
+            }
+
+            int[] to = new int[2];
+            int[] base = new int[2];
+            desktopSendIcon.getLocationInWindow(to);
+            desktop.getLocationInWindow(base);
+
+            dialBubbleView = new LinearLayout(this);
+            dialBubbleView.setOrientation(LinearLayout.VERTICAL);
+            dialBubbleView.setGravity(android.view.Gravity.CENTER);
+            
+            // 用一张白底的背景，让绿色进度条更明显
+            android.graphics.drawable.GradientDrawable panelBg = new android.graphics.drawable.GradientDrawable();
+            panelBg.setColor(0xFFFFFFFF);
+            panelBg.setCornerRadius(8);
+            panelBg.setStroke(2, 0xFF0000FF);
+            dialBubbleView.setBackground(panelBg);
+            dialBubbleView.setPadding(16, 16, 16, 16);
+
+            ImageView bubble = new ImageView(this);
+            // 这里用系统原生的电话图标，绝对能找到
+            bubble.setImageResource(android.R.drawable.sym_action_call);
+            LinearLayout.LayoutParams bubbleLp = new LinearLayout.LayoutParams(64, 64);
+            bubbleLp.gravity = android.view.Gravity.CENTER;
+            bubble.setLayoutParams(bubbleLp);
+            dialBubbleView.addView(bubble);
+
+            android.widget.ProgressBar progressBar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+            progressBar.setIndeterminate(true); 
+            
+            android.graphics.drawable.GradientDrawable bgShape = new android.graphics.drawable.GradientDrawable();
+            bgShape.setColor(0xFF000000); 
+            bgShape.setCornerRadius(2);
+            
+            android.graphics.drawable.GradientDrawable progressShape = new android.graphics.drawable.GradientDrawable();
+            progressShape.setColor(0xFF00FF00); 
+            progressShape.setCornerRadius(2);
+            
+            android.graphics.drawable.ClipDrawable clipDrawable = new android.graphics.drawable.ClipDrawable(progressShape, android.view.Gravity.LEFT, android.graphics.drawable.ClipDrawable.HORIZONTAL);
+            android.graphics.drawable.LayerDrawable layerDrawable = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{bgShape, clipDrawable});
+            
+            progressBar.setProgressDrawable(layerDrawable);
+            
+            LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(120, 12);
+            progressLp.topMargin = 10;
+            progressLp.gravity = android.view.Gravity.CENTER;
+            progressBar.setLayoutParams(progressLp);
+            dialBubbleView.addView(progressBar);
+
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+            dialBubbleView.setLayoutParams(lp);
+            dialBubbleView.setX(to[0] - base[0] - 20);
+            dialBubbleView.setY(to[1] - base[1] - 100);
+
+            desktop.addView(dialBubbleView);
+
+            android.view.animation.ScaleAnimation scale = new android.view.animation.ScaleAnimation(
+                    0f, 1f, 0f, 1f,
+                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
+                    android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
+            );
+            scale.setDuration(300);
+            dialBubbleView.startAnimation(scale);
+        });
+    }
+
     private void sendMail() {
         final String to = etTo.getText().toString().trim();
         final String subject = etSubject.getText().toString().trim();
@@ -691,7 +778,7 @@ public class MainActivity extends AppCompatActivity {
             int[] from = new int[2]; int[] to = new int[2]; int[] base = new int[2];
             desktopInboxIcon.getLocationInWindow(from); desktopSendIcon.getLocationInWindow(to); desktop.getLocationInWindow(base);
             ImageView fly = new ImageView(this);
-            fly.setImageResource(R.drawable.dial_bubble);
+            fly.setImageResource(android.R.drawable.sym_action_call);
             fly.setLayoutParams(new FrameLayout.LayoutParams(56, 56));
             fly.setX(from[0] - base[0]); fly.setY(from[1] - base[1]);
             desktop.addView(fly);
