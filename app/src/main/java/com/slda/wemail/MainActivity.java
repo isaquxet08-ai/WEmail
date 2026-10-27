@@ -477,6 +477,9 @@ public class MainActivity extends AppCompatActivity {
     }
     
     
+    
+
+    
     private void stopDialSound() {
         if (dialBubbleView != null) {
             desktop.removeView(dialBubbleView);
@@ -759,19 +762,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void stopDialSound() {
-        if (dialBubbleView != null) {
-            desktop.removeView(dialBubbleView);
-            dialBubbleView = null;
-        }
-        if (dialPlayer != null) {
-            try {
-                if (dialPlayer.isPlaying()) dialPlayer.stop();
-                dialPlayer.release();
-            } catch (Exception ignored) {}
-            dialPlayer = null;
-        }
-    }
+    
 
     private void flyAnimation() {
         desktop.post(() -> {
