@@ -38,6 +38,20 @@ import java.util.ArrayList;
 import jakarta.mail.Folder;
 import jakarta.mail.Store;
 import java.util.Properties;
+
+import java.security.KeyStore;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+import android.util.Base64;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
+
 import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
 import jakarta.mail.PasswordAuthentication;
@@ -168,6 +182,11 @@ public class MainActivity extends AppCompatActivity {
             }, 300);
         });
 
+        findViewById(R.id.navContacts).setOnClickListener(v -> {
+            showWindow(windowContacts);
+            loadContacts();
+            drawerLayout.closeDrawers();
+        });
         btnSavePass.setOnClickListener(v -> saveSettings());
         btnSend.setOnClickListener(v -> sendMail());
         loadEmails();
@@ -294,19 +313,60 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
     private void loadSettings() {
+        // 1. 先尝试从本地 SharedPreferences 读
         etMailPrefix.setText(prefs.getString("mail_prefix", "dtmbemail"));
         etMailDomain.setText(prefs.getString("mail_domain", "slda.cc.cd"));
         etImapHost.setText(prefs.getString("imap_host", "imap.qq.com"));
-        etImapUser.setText(prefs.getString("imap_user", "dtmbinxcvb@qq.com"));
+        etImapUser.setText(prefs.getString("imap_user", ""));
         etImapPass.setText(prefs.getString("imap_pass", ""));
         etImapPort.setText(prefs.getString("imap_port", "993"));
         cbImapSsl.setChecked(prefs.getBoolean("imap_ssl", true));
         etSmtpHost.setText(prefs.getString("smtp_host", "smtp.qq.com"));
-        etSmtpUser.setText(prefs.getString("smtp_user", "dtmbinxcvb@qq.com"));
+        etSmtpUser.setText(prefs.getString("smtp_user", ""));
         etSmtpPass.setText(prefs.getString("smtp_pass", ""));
         etSmtpPort.setText(prefs.getString("smtp_port", "465"));
         cbSmtpSsl.setChecked(prefs.getBoolean("smtp_ssl", true));
 
+        // 2. 如果本地是空的（比如刚重装），去公共目录读加密文件
+        if (etImapUser.getText().toString().isEmpty()) {
+            try {
+                File configFile = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "WEmail/config.enc");
+                if (configFile.exists()) {
+                    FileInputStream fis = new FileInputStream(configFile);
+                    byte[] encryptedBytes = new byte[(int) configFile.length()];
+                    fis.read(encryptedBytes);
+                    fis.close();
+
+                    // 用 TEE 密钥解密
+                    KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+                    keyStore.load(null);
+                    SecretKey secretKey = (SecretKey) keyStore.getKey("WEmailMasterKey", null);
+                    
+                    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                    // 前12位是 IV
+                    GCMParameterSpec spec = new GCMParameterSpec(128, encryptedBytes, 0, 12);
+                    cipher.init(Cipher.DECRYPT_MODE, secretKey, spec);
+                    byte[] decryptedBytes = cipher.doFinal(encryptedBytes, 12, encryptedBytes.length - 12);
+                    
+                    String jsonStr = new String(decryptedBytes, StandardCharsets.UTF_8);
+                    org.json.JSONObject json = new org.json.JSONObject(jsonStr);
+
+                    // 恢复 UI
+                    etImapHost.setText(json.optString("imap_host"));
+                    etImapUser.setText(json.optString("imap_user"));
+                    etImapPass.setText(json.optString("imap_pass"));
+                    etSmtpHost.setText(json.optString("smtp_host"));
+                    etSmtpUser.setText(json.optString("smtp_user"));
+                    etSmtpPass.setText(json.optString("smtp_pass"));
+                    etMailPrefix.setText(json.optString("mail_prefix"));
+                    etMailDomain.setText(json.optString("mail_domain"));
+                    
+                    Toast.makeText(this, "🔓 已从安全硬件恢复配置文件", Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "配置恢复失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
         updateUIWithEmail();
     }
 
@@ -325,8 +385,57 @@ public class MainActivity extends AppCompatActivity {
             .putString("smtp_port", etSmtpPort.getText().toString().trim())
             .putBoolean("smtp_ssl", cbSmtpSsl.isChecked())
             .apply();
+            
         updateUIWithEmail();
-        Toast.makeText(this, "配置已保存", Toast.LENGTH_SHORT).show();
+
+        // 同时写入加密的公共文件
+        try {
+            org.json.JSONObject json = new org.json.JSONObject();
+            json.put("imap_host", etImapHost.getText().toString().trim());
+            json.put("imap_user", etImapUser.getText().toString().trim());
+            json.put("imap_pass", etImapPass.getText().toString());
+            json.put("smtp_host", etSmtpHost.getText().toString().trim());
+            json.put("smtp_user", etSmtpUser.getText().toString().trim());
+            json.put("smtp_pass", etSmtpPass.getText().toString());
+            json.put("mail_prefix", etMailPrefix.getText().toString().trim());
+            json.put("mail_domain", etMailDomain.getText().toString().trim());
+
+            // 获取或生成 TEE 密钥
+            KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+            keyStore.load(null);
+            if (!keyStore.containsAlias("WEmailMasterKey")) {
+                KeyGenerator keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+                keyGenerator.init(new KeyGenParameterSpec.Builder("WEmailMasterKey", KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                        .build());
+                keyGenerator.generateKey();
+            }
+            SecretKey secretKey = (SecretKey) keyStore.getKey("WEmailMasterKey", null);
+
+            // 加密
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            byte[] iv = cipher.getIV();
+            byte[] encryption = cipher.doFinal(json.toString().getBytes(StandardCharsets.UTF_8));
+
+            // 合并 IV 和 加密数据
+            byte[] combined = new byte[iv.length + encryption.length];
+            System.arraycopy(iv, 0, combined, 0, iv.length);
+            System.arraycopy(encryption, 0, combined, iv.length, encryption.length);
+
+            // 写入文件
+            File dir = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "WEmail");
+            if (!dir.exists()) dir.mkdirs();
+            File configFile = new File(dir, "config.enc");
+            FileOutputStream fos = new FileOutputStream(configFile);
+            fos.write(combined);
+            fos.close();
+
+            Toast.makeText(this, "✅ 配置已保存并 TEE 硬件加密！", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "加密保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void updateUIWithEmail() {
