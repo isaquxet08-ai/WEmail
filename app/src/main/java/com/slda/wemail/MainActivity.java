@@ -69,6 +69,7 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQ_SAF_DIR = 2001;
     private View windowContacts;
     private LinearLayout listContacts;
     private EditText etContactName, etContactEmail;
@@ -328,7 +329,6 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
     private void loadSettings() {
-        // 基础默认值
         etMailPrefix.setText(prefs.getString("mail_prefix", "dtmbemail"));
         etMailDomain.setText(prefs.getString("mail_domain", "slda.cc.cd"));
         etImapHost.setText(prefs.getString("imap_host", "imap.qq.com"));
@@ -342,32 +342,53 @@ public class MainActivity extends AppCompatActivity {
         etSmtpPort.setText(prefs.getString("smtp_port", "465"));
         cbSmtpSsl.setChecked(prefs.getBoolean("smtp_ssl", true));
 
-        // 如果本地为空（重装后），检查公共目录是否有加密文件，有则弹窗要求输入密码
+        // 重装检查 SAF 配置文件
         if (etImapUser.getText().toString().isEmpty()) {
-            File configFile = new File(android.os.Environment.getExternalStorageDirectory(), "WEmail/config.enc");
-            if (configFile.exists()) {
-                showMasterPasswordDialog(configFile);
+            String safUriStr = prefs.getString("saf_uri", "");
+            if (!safUriStr.isEmpty()) {
+                android.net.Uri treeUri = android.net.Uri.parse(safUriStr);
+                androidx.documentfile.provider.DocumentFile dir = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+                if (dir != null && dir.exists()) {
+                    androidx.documentfile.provider.DocumentFile file = dir.findFile("config.enc");
+                    if (file != null && file.exists()) {
+                        showMasterPasswordDialog(file.getUri());
+                    }
+                }
             }
         }
         updateUIWithEmail();
     }
 
-    private void showMasterPasswordDialog(File configFile) {
+    private void showMasterPasswordDialog(android.net.Uri fileUri) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("🔐 发现加密配置");
-        builder.setMessage("检测到公共目录有配置文件，请输入主密码解密：");
+        builder.setMessage("检测到配置文件。
 
+输入主密码即可恢复。
+如果忘记了密码，可以点击“忘记密码”覆盖原有配置重新开始。");
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setHint("请输入主密码");
         builder.setView(input);
 
-        builder.setPositiveButton("解密", (dialog, which) -> {
-            String password = input.getText().toString();
-            decryptAndLoad(password, configFile);
+        builder.setPositiveButton("解密恢复", (dialog, which) -> decryptAndLoad(input.getText().toString(), fileUri));
+        builder.setNeutralButton("忘记密码/重置", (dialog, which) -> {
+            new AlertDialog.Builder(this)
+                .setTitle("⚠️ 恢复出厂设置")
+                .setMessage("这会使你的配置和密码统一恢复成出厂模式。
+
+旧的加密文件将被彻底销毁，你需要重新配置服务器并设置新的主密码。")
+                .setPositiveButton("确定重置", (d, w) -> {
+                    prefs.edit().clear().apply();
+                    etImapUser.setText(""); etImapPass.setText(""); etSmtpUser.setText(""); etSmtpPass.setText("");
+                    updateUIWithEmail();
+                    showWindow(windowSettings);
+                    Toast.makeText(this, "✅ 已恢复出厂设置", Toast.LENGTH_LONG).show();
+                })
+                .setNegativeButton("取消", null).show();
         });
-        builder.setNegativeButton("取消", (dialog, which) -> {
-            Toast.makeText(this, "已取消恢复", Toast.LENGTH_SHORT).show();
-        });
+        builder.setNegativeButton("暂不恢复", null);
+        builder.setCancelable(false);
         builder.show();
     }
 
@@ -417,80 +438,90 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void saveSettings() {
+        prefs.edit()
+            .putString("mail_prefix", etMailPrefix.getText().toString().trim())
+            .putString("mail_domain", etMailDomain.getText().toString().trim())
+            .putString("imap_host", etImapHost.getText().toString().trim())
+            .putString("imap_user", etImapUser.getText().toString().trim())
+            .putString("imap_pass", etImapPass.getText().toString())
+            .putString("imap_port", etImapPort.getText().toString().trim())
+            .putBoolean("imap_ssl", cbImapSsl.isChecked())
+            .putString("smtp_host", etSmtpHost.getText().toString().trim())
+            .putString("smtp_user", etSmtpUser.getText().toString().trim())
+            .putString("smtp_pass", etSmtpPass.getText().toString())
+            .putString("smtp_port", etSmtpPort.getText().toString().trim())
+            .putBoolean("smtp_ssl", cbSmtpSsl.isChecked())
+            .apply();
+            
+        updateUIWithEmail();
+
+        // SAF 路由：如果没有授权目录，先申请目录
+        String safUriStr = prefs.getString("saf_uri", "");
+        if (safUriStr.isEmpty()) {
+            new AlertDialog.Builder(this)
+                .setTitle("📁 选择存储位置")
+                .setMessage("为了保存加密配置文件，请选择一个文件夹用于存放。（建议在 Documents 中新建一个 WEmail 文件夹并选中）")
+                .setPositiveButton("去选择", (d, w) -> {
+                    android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE);
+                    intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION | android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                    startActivityForResult(intent, REQ_SAF_DIR);
+                })
+                .setNegativeButton("取消", null).show();
+        } else {
+            showSetPasswordDialog();
+        }
+    }
+
+    private void showSetPasswordDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("🔐 设置主密码");
-        builder.setMessage("请设置一个主密码用于加密配置（以后重装App恢复配置时需输入此密码）：");
-
+        builder.setMessage("请设置一个主密码用于加密配置：");
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         builder.setView(input);
-
         builder.setPositiveButton("加密保存", (dialog, which) -> {
             String password = input.getText().toString();
             if (password.isEmpty()) {
-                Toast.makeText(this, "密码不能为空，保存取消", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "密码不能为空", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // 写入本地
-            prefs.edit()
-                .putString("mail_prefix", etMailPrefix.getText().toString().trim())
-                .putString("mail_domain", etMailDomain.getText().toString().trim())
-                .putString("imap_host", etImapHost.getText().toString().trim())
-                .putString("imap_user", etImapUser.getText().toString().trim())
-                .putString("imap_pass", etImapPass.getText().toString())
-                .putString("imap_port", etImapPort.getText().toString().trim())
-                .putBoolean("imap_ssl", cbImapSsl.isChecked())
-                .putString("smtp_host", etSmtpHost.getText().toString().trim())
-                .putString("smtp_user", etSmtpUser.getText().toString().trim())
-                .putString("smtp_pass", etSmtpPass.getText().toString())
-                .putString("smtp_port", etSmtpPort.getText().toString().trim())
-                .putBoolean("smtp_ssl", cbSmtpSsl.isChecked())
-                .apply();
-                
-            updateUIWithEmail();
             encryptAndSave(password);
         });
-        builder.setNegativeButton("取消", null);
-        builder.show();
+        builder.setNegativeButton("取消", null).show();
     }
 
-    private void encryptAndSave(String password) {
+    (String password) {
         try {
             org.json.JSONObject json = new org.json.JSONObject();
-            json.put("imap_host", etImapHost.getText().toString().trim());
-            json.put("imap_user", etImapUser.getText().toString().trim());
-            json.put("imap_pass", etImapPass.getText().toString());
-            json.put("smtp_host", etSmtpHost.getText().toString().trim());
-            json.put("smtp_user", etSmtpUser.getText().toString().trim());
-            json.put("smtp_pass", etSmtpPass.getText().toString());
-            json.put("mail_prefix", etMailPrefix.getText().toString().trim());
-            json.put("mail_domain", etMailDomain.getText().toString().trim());
+            json.put("imap_host", etImapHost.getText().toString().trim()); json.put("imap_user", etImapUser.getText().toString().trim()); json.put("imap_pass", etImapPass.getText().toString());
+            json.put("smtp_host", etSmtpHost.getText().toString().trim()); json.put("smtp_user", etSmtpUser.getText().toString().trim()); json.put("smtp_pass", etSmtpPass.getText().toString());
+            json.put("mail_prefix", etMailPrefix.getText().toString().trim()); json.put("mail_domain", etMailDomain.getText().toString().trim());
 
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
             byte[] key = digest.digest(password.getBytes("UTF-8"));
-            SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
-
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(key, "AES");
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding");
+            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKey);
             byte[] encryptedBytes = cipher.doFinal(json.toString().getBytes("UTF-8"));
 
-            File dir = new File(android.os.Environment.getExternalStorageDirectory(), "WEmail");
-            if (!dir.exists()) {
-                boolean created = dir.mkdirs();
-                if (!created) {
-                    Toast.makeText(this, "❌ 目录创建失败！请去系统设置中手动给 w Email 开启【存储/所有文件访问】权限！", Toast.LENGTH_LONG).show();
-                    return;
+            android.net.Uri treeUri = android.net.Uri.parse(prefs.getString("saf_uri", ""));
+            androidx.documentfile.provider.DocumentFile dir = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri);
+            
+            if (dir == null) { Toast.makeText(this, "❌ 授权失效", Toast.LENGTH_SHORT).show(); return; }
+            
+            androidx.documentfile.provider.DocumentFile file = dir.findFile("config.enc");
+            if (file == null) file = dir.createFile("application/octet-stream", "config.enc");
+
+            if (file != null) {
+                java.io.OutputStream os = getContentResolver().openOutputStream(file.getUri());
+                if (os != null) {
+                    os.write(encryptedBytes);
+                    os.close();
+                    Toast.makeText(this, "✅ 配置已通过 SAF 安全保存", Toast.LENGTH_LONG).show();
                 }
             }
-            File configFile = new File(dir, "config.enc");
-            
-            FileOutputStream fos = new FileOutputStream(configFile);
-            fos.write(encryptedBytes);
-            fos.close();
-
-            Toast.makeText(this, "✅ 配置已用主密码加密保存！", Toast.LENGTH_LONG).show();
         } catch (Exception e) {
-            Toast.makeText(this, "加密保存失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "加密失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -858,35 +889,7 @@ public class MainActivity extends AppCompatActivity {
     
 
     
-    private void requestStoragePermission() {
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            // Android 11+ (华为等)：直接要最高权限
-            if (!android.os.Environment.isExternalStorageManager()) {
-                new android.app.AlertDialog.Builder(this)
-                    .setTitle("获取核心权限")
-                    .setMessage("为了在根目录保存配置文件，请在接下来的页面中允许【所有文件访问权限】！")
-                    .setPositiveButton("去开启", (d, w) -> {
-                        try {
-                            android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                            intent.setData(android.net.Uri.parse("package:" + getPackageName()));
-                            startActivity(intent);
-                        } catch (Exception e) {
-                            startActivity(new android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
-                        }
-                    })
-                    .setCancelable(false)
-                    .show();
-            }
-        } else if (android.os.Build.VERSION.SDK_INT >= 23) {
-            // Android 6-10 (你的 vivo)：申请标准存储权限
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{
-                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        android.Manifest.permission.READ_EXTERNAL_STORAGE
-                }, 1024);
-            }
-        }
-    }
+    
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -1024,6 +1027,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQ_SAF_DIR && resultCode == RESULT_OK && data != null) {
+            android.net.Uri treeUri = data.getData();
+            if (treeUri != null) {
+                getContentResolver().takePersistableUriPermission(treeUri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                prefs.edit().putString("saf_uri", treeUri.toString()).apply();
+                Toast.makeText(this, "✅ 文件夹授权成功！", Toast.LENGTH_SHORT).show();
+                showSetPasswordDialog(); 
+            }
+        }
+
         if (requestCode == REQ_AVATAR && resultCode == RESULT_OK && data != null && data.getData() != null) {
             currentAvatarUri = data.getData();
             topAvatar.setImageURI(currentAvatarUri);
