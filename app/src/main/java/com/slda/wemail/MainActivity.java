@@ -359,44 +359,6 @@ public class MainActivity extends AppCompatActivity {
         updateUIWithEmail();
     }
 
-    private void showMasterPasswordDialog(android.net.Uri fileUri) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("🔐 发现加密配置");
-        builder.setMessage("检测到配置文件。
-
-输入主密码即可恢复。
-如果忘记了密码，可以点击“忘记密码”覆盖原有配置重新开始。");
-        
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        input.setHint("请输入主密码");
-        builder.setView(input);
-
-        builder.setPositiveButton("解密恢复", (dialog, which) -> decryptAndLoad(input.getText().toString(), fileUri));
-        
-        builder.setNeutralButton("忘记密码/重置", (dialog, which) -> {
-            new AlertDialog.Builder(this)
-                .setTitle("⚠️ 恢复出厂设置")
-                .setMessage("这会使你的配置和密码统一恢复成出厂模式。
-
-旧的加密文件将被彻底销毁，你需要重新配置服务器并设置新的主密码。")
-                .setPositiveButton("确定重置", (d, w) -> {
-                    prefs.edit().clear().apply();
-                    etImapUser.setText(""); 
-                    etImapPass.setText(""); 
-                    etSmtpUser.setText(""); 
-                    etSmtpPass.setText("");
-                    updateUIWithEmail();
-                    showWindow(windowSettings);
-                    Toast.makeText(this, "✅ 已恢复出厂设置", Toast.LENGTH_LONG).show();
-                })
-                .setNegativeButton("取消", null).show();
-        });
-        
-        builder.setNegativeButton("暂不恢复", null);
-        builder.setCancelable(false);
-        builder.show();
-    }
     private void decryptAndLoad(String password, File configFile) {
         try {
             byte[] encryptedBytes = new byte[(int) configFile.length()];
