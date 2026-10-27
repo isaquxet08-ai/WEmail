@@ -493,7 +493,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         startDialSound();
-        flyAnimation();
+        showDialBubble();
         btnSend.setEnabled(false);
         statusBar.setText("正在发送 → " + to);
 
@@ -673,13 +673,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void stopDialSound() {
+        if (dialBubbleView != null) {
+            desktop.removeView(dialBubbleView);
+            dialBubbleView = null;
+        }
         if (dialPlayer != null) {
             try {
-                if (dialPlayer.isPlaying()) {
-                    dialPlayer.stop();
-                }
-            } catch (Exception ignored) {}
-            try {
+                if (dialPlayer.isPlaying()) dialPlayer.stop();
                 dialPlayer.release();
             } catch (Exception ignored) {}
             dialPlayer = null;
@@ -691,7 +691,7 @@ public class MainActivity extends AppCompatActivity {
             int[] from = new int[2]; int[] to = new int[2]; int[] base = new int[2];
             desktopInboxIcon.getLocationInWindow(from); desktopSendIcon.getLocationInWindow(to); desktop.getLocationInWindow(base);
             ImageView fly = new ImageView(this);
-            fly.setImageResource(R.drawable.mail_icon);
+            fly.setImageResource(R.drawable.dial_bubble);
             fly.setLayoutParams(new FrameLayout.LayoutParams(56, 56));
             fly.setX(from[0] - base[0]); fly.setY(from[1] - base[1]);
             desktop.addView(fly);
