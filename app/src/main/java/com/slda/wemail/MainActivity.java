@@ -344,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 如果本地为空（重装后），检查公共目录是否有加密文件，有则弹窗要求输入密码
         if (etImapUser.getText().toString().isEmpty()) {
-            File configFile = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "WEmail/config.enc");
+            File configFile = new File(android.os.Environment.getExternalStorageDirectory(), "WEmail/config.enc");
             if (configFile.exists()) {
                 showMasterPasswordDialog(configFile);
             }
@@ -474,7 +474,7 @@ public class MainActivity extends AppCompatActivity {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             byte[] encryptedBytes = cipher.doFinal(json.toString().getBytes("UTF-8"));
 
-            File dir = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "WEmail");
+            File dir = new File(android.os.Environment.getExternalStorageDirectory(), "WEmail");
             if (!dir.exists()) {
                 boolean created = dir.mkdirs();
                 if (!created) {
