@@ -69,6 +69,10 @@ import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
 public class MainActivity extends AppCompatActivity {
+    private View windowContacts;
+    private LinearLayout listContacts;
+    private EditText etContactName, etContactEmail;
+
     private static final int REQ_AVATAR = 1001;
     private static final int REQ_CAMERA = 1002;
 
